@@ -1,0 +1,2389 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#B6DDE4">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<title>Pack Jam: Zero Gap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Mono:wght@500&family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Layout: full-bleed 3D stage (the suitcase) with two HUD bands pinned over it —
+   a luggage tag + fill gauge on top, a security-tray conveyor + boosters below.
+   Single committed look: airport-terminal teal, navy suitcase, candy plastic. */
+:root {
+  --sky-1: #E6F6F5; --sky-2: #B6DDE4; --sky-3: #82B6C6;
+  --ink: #18213D; --ink-2: #4B5A7C; --paper: #FFFFFF;
+  --tag: #F1D7A2; --tag-deep: #C79A4E; --tag-ink: #4A3412;
+  --accent: #FF6A3D; --accent-deep: #C94A22;
+  --ok: #1FB57A; --ok-deep: #158A5C;
+  --belt: #232836; --belt-2: #2D3343; --tray-1: #F6F8FB; --tray-2: #D6DEE8; --tray-edge: #8E9DB0;
+  --scrim: rgba(24, 33, 61, .52);
+  --f-display: "Bungee", "Arial Black", Impact, system-ui, sans-serif;
+  --f-ui: "Fredoka", ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --hud-max: 560px;
+  color-scheme: light;
+}
+html { box-sizing: border-box; height: 100%; background: var(--sky-2); }
+*, *::before, *::after { box-sizing: inherit; }
+body { height: 100%; margin: 0; overflow: hidden; background: var(--sky-2); color: var(--ink); font-family: var(--f-ui);
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+#app { position: relative; width: 100%; height: 100%; overflow: hidden;
+  background: radial-gradient(120% 75% at 50% 46%, var(--sky-1) 0%, var(--sky-2) 52%, var(--sky-3) 100%); }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+#gl.can-grab { cursor: grab; } #gl.grabbing { cursor: grabbing; } #gl.can-tap { cursor: pointer; }
+#fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+
+.hud { position: absolute; left: 0; right: 0; z-index: 10; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.hud-inner { max-width: var(--hud-max); margin: 0 auto; pointer-events: none; }
+.hud-inner > * { pointer-events: auto; }
+
+/* ---------- top band ---------- */
+#hudTop { top: 0; padding-block: 12px 0; }
+#hudTop .hud-inner { display: grid; gap: 10px; }
+.top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tag-wrap { filter: drop-shadow(0 3px 0 var(--tag-deep)) drop-shadow(0 10px 14px rgba(24, 33, 61, .16)); min-width: 0; }
+.tag { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0;
+  background: var(--tag); color: var(--tag-ink); padding: 7px 16px 7px 34px;
+  clip-path: polygon(16px 0, 100% 0, 100% 100%, 16px 100%, 0 calc(100% - 14px), 0 14px); border-radius: 0 12px 12px 0; }
+.tag::before { content: ""; position: absolute; left: 12px; top: 50%; width: 11px; height: 11px; margin-top: -5.5px; border-radius: 50%;
+  background: var(--sky-2); box-shadow: 0 0 0 3px #FFF3D6, inset 0 1px 2px rgba(0, 0, 0, .35); }
+.tag-num { display: grid; justify-items: center; line-height: 1; }
+.tag-k { font: 500 9px/1 var(--f-mono); letter-spacing: .16em; }
+.tag-num b { font: 400 28px/1 var(--f-display); letter-spacing: .02em; }
+.tag-meta { display: grid; gap: 3px; min-width: 0; border-left: 2px dashed rgba(74, 52, 18, .35); padding-left: 12px; }
+.tag-meta > span:first-child { font-weight: 700; font-size: 15px; line-height: 1.1; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tag-code { font: 500 11px/1 var(--f-mono); letter-spacing: .08em; opacity: .8; white-space: nowrap; }
+.top-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.icon-btn { width: 42px; height: 42px; border-radius: 14px; border: 0; background: var(--paper); color: var(--ink); display: grid; place-items: center;
+  box-shadow: 0 4px 0 rgba(24, 33, 61, .2); cursor: pointer; font: 700 19px/1 var(--f-ui); transition: transform .08s; }
+.icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(24, 33, 61, .2); }
+.icon-btn svg { width: 22px; height: 22px; }
+
+.fill { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+.fill-track { position: relative; height: 18px; border-radius: 10px; background: rgba(24, 33, 61, .18);
+  box-shadow: inset 0 2px 3px rgba(24, 33, 61, .25); overflow: hidden; }
+.fill-track::after { content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(255, 255, 255, .45) calc(10% - 2px) 10%); pointer-events: none; }
+.fill-bar { height: 100%; width: 0%; border-radius: 10px; background-color: var(--accent);
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .22) 0 8px, transparent 8px 16px);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15), inset 0 2px 0 rgba(255, 255, 255, .35);
+  transition: width .45s cubic-bezier(.2, .9, .3, 1.2), background-color .3s; animation: belt 1s linear infinite; }
+.fill-bar.full { background-color: var(--ok); }
+@keyframes belt { to { background-position: 22.6px 0; } }
+.fill-read { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+.fill-read b { font: 400 20px/1 var(--f-display); min-width: 3.2ch; text-align: right; }
+.fill-read span { font: 500 11px/1 var(--f-mono); color: var(--ink-2); }
+.stamp { justify-self: start; border: 2px solid var(--ok-deep); color: var(--ok-deep); background: rgba(255, 255, 255, .55);
+  font: 500 10px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px;
+  transform: rotate(-2deg); cursor: pointer; }
+
+/* ---------- toast ---------- */
+#toast { position: absolute; left: 50%; bottom: calc(var(--bot, 220px) + 12px); z-index: 20; transform: translate(-50%, 12px); opacity: 0;
+  width: max-content; max-width: min(92vw, 460px); text-align: center; text-wrap: balance;
+  background: var(--ink); color: #fff; font-weight: 600; font-size: 14.5px; line-height: 1.35; padding: 10px 16px; border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(24, 33, 61, .3); transition: opacity .2s, transform .25s; pointer-events: none; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- bottom band ---------- */
+#hudBottom { bottom: 0; padding-block: 0 14px; }
+#hudBottom .hud-inner { display: grid; gap: 12px; }
+.belt-wrap { background: var(--belt); border-radius: 20px; padding: 9px 10px 11px;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .35), 0 12px 26px rgba(24, 33, 61, .28); }
+.belt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 4px 7px; color: #C9D2E3;
+  font: 500 10.5px/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; }
+.belt-head #hint { color: #FFD9A8; letter-spacing: .04em; text-transform: none; font: 600 12.5px/1.2 var(--f-ui); text-align: right; min-width: 0; }
+.belt { position: relative; display: flex; align-items: flex-end; gap: 10px; min-height: 104px; padding: 8px; border-radius: 12px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--belt-2) 0 26px, #262B39 26px 29px); background-size: 29px 100%; }
+.belt.roll { animation: roll .35s ease-out; }
+@keyframes roll { from { background-position: 29px 0; } to { background-position: 0 0; } }
+.tray { position: relative; flex: 0 0 auto; width: 78px; height: 74px; border-radius: 13px; border: 0; padding: 0 0 14px;
+  background: linear-gradient(var(--tray-1), var(--tray-2)); display: grid; place-items: center;
+  box-shadow: inset 0 4px 7px rgba(0, 0, 0, .2), inset 0 0 0 2px rgba(255, 255, 255, .6), 0 4px 0 var(--tray-edge); }
+.tray.head { width: 104px; height: 90px; cursor: grab; touch-action: none; }
+.tray.head::before { content: "SIRADA"; position: absolute; top: -1px; left: 50%; transform: translate(-50%, -55%);
+  background: var(--accent); color: #fff; font: 500 9px/1 var(--f-mono); letter-spacing: .14em; padding: 4px 7px; border-radius: 6px; }
+.tray.head.selected { transform: translateY(-6px); box-shadow: inset 0 4px 7px rgba(0, 0, 0, .2), 0 0 0 3px var(--accent), 0 10px 0 var(--tray-edge); }
+.tray.head.dragging { opacity: .45; }
+.tray.enter { animation: slideIn .35s cubic-bezier(.2, .9, .3, 1.15); }
+@keyframes slideIn { from { transform: translateX(var(--from, 90px)); } to { transform: none; } }
+.tray-lbl { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font: 500 10px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; }
+.more { flex: 0 0 auto; align-self: center; min-width: 46px; height: 46px; border-radius: 23px; display: grid; place-items: center; color: #DCE3F0;
+  border: 2px dashed rgba(220, 227, 240, .45); font: 600 15px/1 var(--f-ui); }
+.empty-belt { color: #9AA6BD; font: 500 12px/1.4 var(--f-mono); align-self: center; padding: 0 8px; }
+
+.mini { position: relative; display: block; width: calc(var(--w) * var(--c)); height: calc(var(--h) * var(--c));
+  border-radius: calc(var(--c) * .26); background-color: var(--col);
+  background-image: radial-gradient(circle at 50% 46%, rgba(255, 255, 255, .55) 0 17%, rgba(0, 0, 0, .14) 18% 24%, transparent 25%);
+  background-size: var(--c) var(--c);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .22), inset 0 2px 0 rgba(255, 255, 255, .45), 0 2px 3px rgba(0, 0, 0, .25); }
+.mini.axis { background-image: none; }
+.mini.soft { background-image: none; border-radius: calc(var(--c) * .45); }
+.mini.soft::after { content: ""; position: absolute; inset: 4px; border: 2px dashed rgba(255, 255, 255, .8); border-radius: calc(var(--c) * .35); }
+.mini.base { background-image: radial-gradient(circle at 50% 46%, #FFE6A0 0 18%, #B9861A 20% 26%, transparent 27%); }
+.mini.cap { border-radius: calc(var(--c) * .2); background-image: linear-gradient(90deg, transparent 27%, rgba(24, 33, 61, .2) 27% 36%, transparent 36% 64%, rgba(24, 33, 61, .2) 64% 73%, transparent 73%);
+  background-size: 100% 100%; transform: perspective(120px) rotateX(28deg); box-shadow: 0 -4px 0 rgba(0, 0, 0, .18) inset, 0 6px 0 -2px rgba(24, 33, 61, .25); }
+.mini svg { position: absolute; inset: 0; margin: auto; width: 74%; height: 74%; overflow: visible; }
+.mini-sock { width: 44px; height: 44px; display: block; }
+
+/* ---------- boosters ---------- */
+.boosters { display: flex; justify-content: center; gap: 18px; }
+.booster { position: relative; display: grid; justify-items: center; gap: 5px; border: 0; background: none; padding: 0; cursor: pointer; }
+.booster .orb { width: 60px; height: 58px; border-radius: 19px; display: grid; place-items: center; color: #fff; background: var(--b);
+  box-shadow: 0 5px 0 var(--bd), inset 0 3px 0 rgba(255, 255, 255, .35), inset 0 -2px 0 rgba(0, 0, 0, .12); transition: transform .08s; }
+.booster .orb svg { width: 30px; height: 30px; }
+.booster:active .orb { transform: translateY(4px); box-shadow: 0 1px 0 var(--bd), inset 0 3px 0 rgba(255, 255, 255, .35); }
+.booster .b-name { font-weight: 700; font-size: 13px; color: var(--ink); }
+.booster .badge { position: absolute; top: -7px; right: -9px; min-width: 25px; height: 25px; padding: 0 5px; border-radius: 13px;
+  background: var(--ink); color: #fff; font: 700 13px/21px var(--f-ui); text-align: center; border: 2px solid #fff; font-variant-numeric: tabular-nums; }
+.booster.armed .orb { box-shadow: 0 5px 0 var(--bd), 0 0 0 4px #fff, 0 0 0 7px var(--b); animation: armed 1s ease-in-out infinite; }
+@keyframes armed { 50% { transform: translateY(-3px); } }
+.booster[aria-disabled="true"] { opacity: .45; filter: saturate(.4); }
+
+/* ---------- shake picker ---------- */
+.shake-pick { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; background: rgba(24, 33, 61, .22); }
+.shake-pick .pad { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: auto repeat(3, 64px); gap: 8px; justify-items: center; align-items: center; }
+.shake-pick p { grid-column: 1 / -1; margin: 0 0 6px; background: var(--ink); color: #fff; padding: 9px 14px; border-radius: 12px; font-weight: 600; font-size: 15px; text-align: center; }
+.shake-pick button { width: 64px; height: 64px; border-radius: 20px; border: 0; background: #FFB020; color: var(--ink); cursor: pointer;
+  box-shadow: 0 5px 0 #C98200; display: grid; place-items: center; }
+.shake-pick button svg { width: 30px; height: 30px; }
+.shake-pick button.cancel { background: var(--paper); box-shadow: 0 5px 0 rgba(24, 33, 61, .25); font-weight: 700; font-size: 13px; }
+.shake-pick button:active { transform: translateY(4px); box-shadow: none; }
+
+/* ---------- overlays ---------- */
+.overlay { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--scrim);
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+.card { width: min(100%, 380px); background: var(--paper); border-radius: 26px; padding: 26px 22px 20px; text-align: center;
+  box-shadow: 0 8px 0 rgba(24, 33, 61, .25), 0 30px 60px rgba(24, 33, 61, .35); display: grid; gap: 12px; animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
+@keyframes pop { from { transform: scale(.8); opacity: 0; } }
+.card h2 { margin: 0; font: 400 30px/1.05 var(--f-display); text-wrap: balance; }
+.card p { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.45; text-wrap: pretty; }
+.win h2 { color: var(--accent); text-shadow: 0 3px 0 var(--ink); letter-spacing: .01em; }
+.win-stamp { justify-self: center; font: 400 22px/1 var(--f-display); color: var(--ok-deep); border: 4px solid var(--ok-deep); border-radius: 10px;
+  padding: 8px 14px 6px; transform: rotate(-6deg); letter-spacing: .06em; background: rgba(31, 181, 122, .08); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0; }
+.stats div { background: #F1F4F8; border-radius: 14px; padding: 10px 4px 8px; display: grid; gap: 4px; }
+.stats b { font: 400 22px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.stats span { font: 500 10.5px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .06em; text-transform: uppercase; }
+.fail h2 { color: var(--ink); }
+.fail .sub { font: 400 15px/1 var(--f-display); color: var(--accent); letter-spacing: .04em; }
+.btn { border: 0; border-radius: 16px; padding: 14px 18px; font-weight: 700; font-size: 16px; cursor: pointer; background: #EEF2F7; color: var(--ink);
+  box-shadow: 0 4px 0 rgba(24, 33, 61, .18); }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(24, 33, 61, .18); }
+.btn.primary { background: var(--accent); color: #fff; box-shadow: 0 5px 0 var(--accent-deep); }
+.btn.ghost { background: transparent; box-shadow: none; color: var(--ink-2); padding: 8px; }
+.help { text-align: left; gap: 14px; }
+.help h2 { text-align: center; color: var(--ink); }
+.help .goal { text-align: center; font-weight: 600; color: var(--ink); }
+.help ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; counter-reset: s; }
+.help li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; font-size: 14.5px; line-height: 1.4; color: var(--ink-2); counter-increment: s; }
+.help li::before { content: counter(s); width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--tag); color: var(--tag-ink); font: 400 14px/1 var(--f-display); }
+.help li b { color: var(--ink); }
+
+@media (max-height: 700px) {
+  .tray { height: 64px; width: 70px; } .tray.head { height: 78px; width: 92px; } .belt { min-height: 90px; }
+  .booster .orb { width: 52px; height: 50px; } .boosters { gap: 14px; } #hudBottom .hud-inner { gap: 10px; }
+  .stamp { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fill-bar { animation: none; } .booster.armed .orb { animation: none; } .card { animation: none; } .tray.enter, .belt.roll { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl" aria-label="Bavul: blokları sürükle, kapılara dokun"></canvas>
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <header id="hudTop" class="hud">
+    <div class="hud-inner">
+      <div class="top-row">
+        <div class="tag-wrap">
+          <div class="tag">
+            <div class="tag-num"><span class="tag-k">BÖLÜM</span><b id="lvlNum">01</b></div>
+            <div class="tag-meta"><span id="lvlName">Hafta Sonu Çantası</span><span class="tag-code"><span id="lvlCode">IST-01</span> · <span id="lvlSize">6×6</span></span></div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" id="btnHelp" aria-label="Nasıl oynanır">?</button>
+          <button class="icon-btn" id="btnSound" aria-label="Sesi kapat"></button>
+          <button class="icon-btn" id="btnRestart" aria-label="Bölümü yeniden başlat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fill" role="group" aria-label="Doluluk oranı">
+        <div class="fill-track"><div class="fill-bar" id="fillBar"></div></div>
+        <div class="fill-read"><b id="fillPct">0%</b><span id="fillCells">0/36</span></div>
+      </div>
+      <button class="stamp" id="stamp" type="button">✓ Çözüm doğrulandı</button>
+    </div>
+  </header>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <footer id="hudBottom" class="hud">
+    <div class="hud-inner">
+      <div class="belt-wrap">
+        <div class="belt-head"><span>Kuyruk</span><span id="hint">Bir kapıya dokun</span></div>
+        <div class="belt" id="belt"></div>
+      </div>
+      <div class="boosters">
+        <button class="booster" id="bUndo" type="button" style="--b:#3D8BFF;--bd:#2A5FC0" aria-label="Geri al">
+          <span class="orb"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9 5 15l6 6"/><path d="M5 15h14a7 7 0 0 1 0 14h-5"/></svg></span>
+          <span class="b-name">Geri Al</span><span class="badge" id="nUndo">5</span>
+        </button>
+        <button class="booster" id="bVac" type="button" style="--b:#14BFAE;--bd:#0B8C80" aria-label="Vakum poşeti">
+          <span class="orb"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h16l-1.5 17a2 2 0 0 1-2 1.8h-9a2 2 0 0 1-2-1.8z"/><circle cx="16" cy="17" r="3.2"/><path d="M16 4v3M10 5l1.5 2.4M22 5l-1.5 2.4"/></svg></span>
+          <span class="b-name">Vakum</span><span class="badge" id="nVac">2</span>
+        </button>
+        <button class="booster" id="bShake" type="button" style="--b:#FFA41B;--bd:#C47A00" aria-label="Silkele">
+          <span class="orb"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="10" width="14" height="16" rx="3"/><path d="M13 10V7.5a1.5 1.5 0 0 1 1.5-1.5h3a1.5 1.5 0 0 1 1.5 1.5V10"/><path d="M4 13v6M28 13v6M6.5 11v10M25.5 11v10"/></svg></span>
+          <span class="b-name">Silkele</span><span class="badge" id="nShake">2</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <div class="shake-pick" id="shakePick" hidden>
+    <div class="pad">
+      <p>Hangi yöne presleyelim?</p>
+      <span></span>
+      <button type="button" data-dir="up" aria-label="Yukarı preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      <span></span>
+      <button type="button" data-dir="left" aria-label="Sola preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg></button>
+      <button type="button" class="cancel" id="shakeCancel">İptal</button>
+      <button type="button" data-dir="right" aria-label="Sağa preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <span></span>
+      <button type="button" data-dir="down" aria-label="Aşağı preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></button>
+      <span></span>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOv" hidden>
+    <div class="card win" role="dialog" aria-labelledby="winTitle">
+      <h2 id="winTitle">PERFECT PACK!</h2>
+      <div class="win-stamp">100% FULL</div>
+      <div class="stats">
+        <div><b id="wMoves">0</b><span>hamle</span></div>
+        <div><b id="wItems">0</b><span>eşya</span></div>
+        <div><b id="wBoost">0</b><span>booster</span></div>
+      </div>
+      <button class="btn primary" id="btnNext" type="button">Sonraki bavul</button>
+      <button class="btn ghost" id="btnReplay" type="button">Bu bavulu tekrar topla</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="failOv" hidden>
+    <div class="card fail" role="dialog" aria-labelledby="failTitle">
+      <h2 id="failTitle">Out of Space!</h2>
+      <div class="sub">KAPILAR TIKANDI</div>
+      <p id="failText">Sıradaki eşya hiçbir kapıdan giremiyor ve içeride kıpırdayabilen blok kalmadı.</p>
+      <button class="btn primary" id="fUndo" type="button">Son hamleyi geri al</button>
+      <button class="btn" id="fRestart" type="button">Bölümü baştan başlat</button>
+      <button class="btn ghost" id="fClose" type="button">Kapat, booster ile dene</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="helpOv" hidden>
+    <div class="card help" role="dialog" aria-labelledby="helpTitle">
+      <h2 id="helpTitle">Pack Jam: Zero Gap</h2>
+      <p class="goal">Hedef: bavulda tek boş kare kalmasın. %100 dolu.</p>
+      <ol>
+        <li><span><b>Kapıya dokun</b> ya da sıradaki tepsiyi kapıya sürükle. Eşya içeri girer ve bir şeye çarpana kadar kayar.</span></li>
+        <li><span>İçerideki blokları <b>tutup boş yöne kaydır</b>. ↔ ↕ oklu bloklar sadece o eksende kayar, kapıları da ona göre seçilir.</span></li>
+        <li><span><b>Yaylı yumuşak eşyayı</b> duvara ya da sert bloğa doğru itmeye devam et: 1×3'ten 1×2'ye büzüşür.</span></li>
+        <li><span><b>Altın pimli blok</b> hiç kıpırdamayacak şekilde yerine oturunca, sırası gelen kapağı onun üstüne kaydır.</span></li>
+      </ol>
+      <button class="btn primary" id="btnStart" type="button">Bavulu açalım</button>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+/* ==========================================================================
+   PACK JAM ENGINE — pure puzzle rules + reverse level generator.
+   Grid coords: x = column (0 = left), y = row (0 = top / far side).
+   Every rule the player experiences lives here, and the generator's
+   verifier replays the reference solution through these same functions.
+   ========================================================================== */
+(function (global) {
+  'use strict';
+
+  const SIDES = ['top', 'right', 'bottom', 'left'];
+  /* direction a block travels when it ENTERS through a gate on this side */
+  const INWARD = { left: [1, 0], right: [-1, 0], top: [0, 1], bottom: [0, -1] };
+  const sideAxis = s => (s === 'left' || s === 'right') ? 'x' : 'y';
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  const pick = (arr, R) => arr[Math.floor(R() * arr.length)];
+  function shuffleInPlace(arr, R) {
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    return arr;
+  }
+
+  const cloneBlocks = bs => bs.map(b => Object.assign({}, b));
+
+  /* ---------- occupancy ---------- */
+  function occ(st, ignoreId) {
+    const g = new Int32Array(st.W * st.H);
+    for (const b of st.blocks) {
+      if (b.id === ignoreId) continue;
+      for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) g[y * st.W + x] = b.id;
+    }
+    return g;
+  }
+  function rectFree(st, g, x, y, w, h) {
+    if (x < 0 || y < 0 || x + w > st.W || y + h > st.H) return false;
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (g[yy * st.W + xx]) return false;
+    return true;
+  }
+  function blockById(st, id) { for (const b of st.blocks) if (b.id === id) return b; return null; }
+  function filledCount(st) { let n = 0; for (const b of st.blocks) n += b.w * b.h; return n; }
+
+  /* ---------- sliding ---------- */
+  function canAxis(b, axis) {
+    if (b.fixed || b.capped) return false;
+    if (b.axis === 'h') return axis === 'x';
+    if (b.axis === 'v') return axis === 'y';
+    return true;
+  }
+  function slideRange(st, b, axis, g) {
+    g = g || occ(st, b.id);
+    if (axis === 'x') {
+      let mn = b.x, mx = b.x;
+      while (rectFree(st, g, mn - 1, b.y, 1, b.h)) mn--;
+      while (rectFree(st, g, mx + b.w, b.y, 1, b.h)) mx++;
+      return { min: mn, max: mx };
+    }
+    let mn = b.y, mx = b.y;
+    while (rectFree(st, g, b.x, mn - 1, b.w, 1)) mn--;
+    while (rectFree(st, g, b.x, mx + b.h, b.w, 1)) mx++;
+    return { min: mn, max: mx };
+  }
+  function canSlideTo(st, b, x, y) {
+    if (x !== b.x && y !== b.y) return false;
+    if (x === b.x && y === b.y) return false;
+    const axis = x !== b.x ? 'x' : 'y';
+    if (!canAxis(b, axis)) return false;
+    const r = slideRange(st, b, axis);
+    const v = axis === 'x' ? x : y;
+    return v >= r.min && v <= r.max;
+  }
+
+  /* ---------- gates ---------- */
+  /* item = {w,h,axis}; returns every legal entry: offset along the gate, the
+     first fully-inside position (x,y) and the landing spot (ex,ey) after the
+     block slides in until it hits something. */
+  function entryOptions(st, item, gate, g) {
+    const ax = sideAxis(gate.side);
+    if (item.axis === 'h' && ax !== 'x') return [];
+    if (item.axis === 'v' && ax !== 'y') return [];
+    const cross = ax === 'x' ? item.h : item.w;
+    if (cross > gate.len) return [];
+    g = g || occ(st);
+    const [dx, dy] = INWARD[gate.side];
+    const out = [];
+    for (let o = gate.start; o <= gate.start + gate.len - cross; o++) {
+      let x, y;
+      if (gate.side === 'left') { x = 0; y = o; }
+      else if (gate.side === 'right') { x = st.W - item.w; y = o; }
+      else if (gate.side === 'top') { x = o; y = 0; }
+      else { x = o; y = st.H - item.h; }
+      if (!rectFree(st, g, x, y, item.w, item.h)) continue;
+      let ex = x, ey = y;
+      while (rectFree(st, g, ex + dx, ey + dy, item.w, item.h)) { ex += dx; ey += dy; }
+      out.push({ offset: o, x, y, ex, ey });
+    }
+    return out;
+  }
+  function entryBlockReason(st, item, gate) {
+    const ax = sideAxis(gate.side);
+    if (item.axis === 'h' && ax !== 'x') return 'axis-h';
+    if (item.axis === 'v' && ax !== 'y') return 'axis-v';
+    const cross = ax === 'x' ? item.h : item.w;
+    if (cross > gate.len) return 'narrow';
+    return 'blocked';
+  }
+  function makeBlock(item) {
+    return {
+      id: item.id, w: item.w, h: item.h, x: 0, y: 0, color: item.color,
+      axis: item.axis || 'free', soft: !!item.soft, softAxis: item.softAxis || null,
+      compressed: false, base: !!item.base, capped: false, fixed: false, sock: false,
+      enteredFrom: null
+    };
+  }
+  function applyEnter(st, item, gate, opt) {
+    const b = makeBlock(item);
+    b.x = opt.ex; b.y = opt.ey; b.enteredFrom = gate.side;
+    st.blocks.push(b);
+    return b;
+  }
+
+  /* ---------- compressible soft blocks ---------- */
+  function isHard(st, g, x, y) {
+    if (x < 0 || y < 0 || x >= st.W || y >= st.H) return true;     // suitcase wall
+    const id = g[y * st.W + x];
+    if (!id) return false;
+    const o = blockById(st, id);
+    return !!o && !(o.soft || o.sock);
+  }
+  function leadLine(b, axis, dir) {
+    const line = [];
+    if (axis === 'x') { const lx = dir > 0 ? b.x + b.w : b.x - 1; for (let y = b.y; y < b.y + b.h; y++) line.push([lx, y]); }
+    else { const ly = dir > 0 ? b.y + b.h : b.y - 1; for (let x = b.x; x < b.x + b.w; x++) line.push([x, ly]); }
+    return line;
+  }
+  /* pushing a soft 1x3 in `dir` against a wall or hard block squeezes it to 1x2;
+     the leading end stays against the obstacle, the trailing cell is freed */
+  function compressInfo(st, b, dir, g) {
+    if (!b.soft || b.compressed || b.capped) return null;
+    g = g || occ(st, b.id);
+    const ax = b.softAxis;
+    if (!leadLine(b, ax, dir).some(([x, y]) => isHard(st, g, x, y))) return null;
+    const c = { x: b.x, y: b.y, w: b.w, h: b.h };
+    if (ax === 'x') { c.w = b.w - 1; if (dir > 0) c.x = b.x + 1; }
+    else { c.h = b.h - 1; if (dir > 0) c.y = b.y + 1; }
+    return c;
+  }
+  /* reverse of compressInfo (generator only) */
+  function expandInfo(st, b, dir, g) {
+    if (!b.soft || !b.compressed) return null;
+    g = g || occ(st, b.id);
+    const ax = b.softAxis;
+    if (!leadLine(b, ax, dir).some(([x, y]) => isHard(st, g, x, y))) return null;
+    const e = { x: b.x, y: b.y, w: b.w, h: b.h };
+    if (ax === 'x') { e.w = b.w + 1; if (dir > 0) e.x = b.x - 1; }
+    else { e.h = b.h + 1; if (dir > 0) e.y = b.y - 1; }
+    if (!rectFree(st, g, e.x, e.y, e.w, e.h)) return null;
+    return e;
+  }
+
+  /* ---------- state queries ---------- */
+  function isSnug(st, b) {
+    const g = occ(st, b.id);
+    for (const ax of ['x', 'y']) {
+      if (b.axis === 'h' && ax !== 'x') continue;
+      if (b.axis === 'v' && ax !== 'y') continue;
+      const r = slideRange(st, b, ax, g), cur = ax === 'x' ? b.x : b.y;
+      if (r.min !== cur || r.max !== cur) return false;
+    }
+    return true;
+  }
+  function blockCanMove(st, b) {
+    if (b.fixed || b.capped) return false;
+    const g = occ(st, b.id);
+    for (const ax of ['x', 'y']) {
+      if (!canAxis(b, ax)) continue;
+      const r = slideRange(st, b, ax, g), cur = ax === 'x' ? b.x : b.y;
+      if (r.min < cur || r.max > cur) return true;
+    }
+    if (b.soft && !b.compressed) for (const d of [1, -1]) if (compressInfo(st, b, d, g)) return true;
+    return false;
+  }
+  function headPossible(st, item) {
+    if (!item) return false;
+    if (item.type === 'block') { const g = occ(st); return st.gates.some(gt => entryOptions(st, item, gt, g).length > 0); }
+    if (item.type === 'sock') return filledCount(st) < st.W * st.H;
+    if (item.type === 'cap') { const b = blockById(st, item.baseId); return !!b && !b.capped && isSnug(st, b); }
+    return false;
+  }
+  function anyActionPossible(st, queue) {
+    if (headPossible(st, queue[0])) return true;
+    for (const b of st.blocks) if (blockCanMove(st, b)) return true;
+    return false;
+  }
+
+  /* ---------- boosters ---------- */
+  function pressAll(st, vec) {
+    const [dx, dy] = vec, ax = dx ? 'x' : 'y';
+    let changed = false;
+    for (let guard = 0; guard < 40; guard++) {
+      let moved = false;
+      const list = st.blocks.filter(b => canAxis(b, ax));
+      list.sort((a, b) => dx > 0 ? (b.x + b.w) - (a.x + a.w) : dx < 0 ? a.x - b.x : dy > 0 ? (b.y + b.h) - (a.y + a.h) : a.y - b.y);
+      for (const b of list) {
+        const r = slideRange(st, b, ax), t = (dx > 0 || dy > 0) ? r.max : r.min;
+        if (ax === 'x' && t !== b.x) { b.x = t; moved = true; }
+        if (ax === 'y' && t !== b.y) { b.y = t; moved = true; }
+      }
+      if (!moved) break;
+      changed = true;
+    }
+    return changed;
+  }
+  function shrinkInfo(b) {
+    if (b.w * b.h <= 1) return null;
+    let w = b.w, h = b.h;
+    if (w > h) w--; else h--;
+    return { w, h, freed: b.w * b.h - w * h };
+  }
+
+  /* ======================================================================
+     GENERATOR — tile 100%, extract in reverse, replay forward, verify.
+     ====================================================================== */
+  const SHAPES = [
+    { w: 1, h: 1, wt: 0.15 }, { w: 2, h: 1, wt: 1.15 }, { w: 1, h: 2, wt: 1.15 },
+    { w: 3, h: 1, wt: 1.25 }, { w: 1, h: 3, wt: 1.25 }, { w: 2, h: 2, wt: 1.3 },
+    { w: 3, h: 2, wt: 0.85 }, { w: 2, h: 3, wt: 0.85 }
+  ];
+
+  /* Step 1: exact cover of every free cell (backtracking, first-empty-cell). */
+  function tileGrid(W, H, pre, R, maxOnes) {
+    const filled = pre.slice();
+    const pieces = [];
+    let ones = 0, nodes = 0;
+    const first = () => { for (let i = 0; i < W * H; i++) if (!filled[i]) return i; return -1; };
+    const fits = (x, y, w, h) => {
+      if (x + w > W || y + h > H) return false;
+      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (filled[yy * W + xx]) return false;
+      return true;
+    };
+    const set = (x, y, w, h, v) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) filled[yy * W + xx] = v; };
+    function rec() {
+      if (++nodes > 8000) return false;
+      const c = first();
+      if (c < 0) return true;
+      const x = c % W, y = (c / W) | 0;
+      const order = SHAPES.map(s => ({ s, k: Math.pow(R(), 1 / s.wt) })).sort((a, b) => b.k - a.k).map(o => o.s);
+      for (const s of order) {
+        const one = s.w * s.h === 1;
+        if (one && ones >= maxOnes) continue;
+        if (!fits(x, y, s.w, s.h)) continue;
+        set(x, y, s.w, s.h, 1); pieces.push({ x, y, w: s.w, h: s.h }); if (one) ones++;
+        if (rec()) return true;
+        set(x, y, s.w, s.h, 0); pieces.pop(); if (one) ones--;
+      }
+      return false;
+    }
+    return rec() ? pieces : null;
+  }
+
+  function exitOk(st, b, gate, g) {
+    const ax = sideAxis(gate.side);
+    if (!canAxis(b, ax)) return false;
+    const c0 = ax === 'x' ? b.y : b.x, cl = ax === 'x' ? b.h : b.w;
+    if (!(c0 >= gate.start && c0 + cl <= gate.start + gate.len)) return false;
+    g = g || occ(st, b.id);
+    if (gate.side === 'left') return b.x === 0 || rectFree(st, g, 0, b.y, b.x, b.h);
+    if (gate.side === 'right') return b.x + b.w === st.W || rectFree(st, g, b.x + b.w, b.y, st.W - b.x - b.w, b.h);
+    if (gate.side === 'top') return b.y === 0 || rectFree(st, g, b.x, 0, b.w, b.y);
+    return b.y + b.h === st.H || rectFree(st, g, b.x, b.y + b.h, b.w, st.H - b.y - b.h);
+  }
+  function allSlides(st) {
+    const out = [];
+    for (const b of st.blocks) {
+      if (b.fixed) continue;
+      const g = occ(st, b.id);
+      for (const ax of ['x', 'y']) {
+        if (!canAxis(b, ax)) continue;
+        const r = slideRange(st, b, ax, g), cur = ax === 'x' ? b.x : b.y;
+        for (let v = r.min; v <= r.max; v++) if (v !== cur) out.push({ b, x: ax === 'x' ? v : b.x, y: ax === 'y' ? v : b.y });
+      }
+    }
+    return out;
+  }
+  function exitScore(st) {
+    let n = 0;
+    for (const b of st.blocks) {
+      if (b.fixed) continue;
+      const g = occ(st, b.id);
+      if (b.soft && b.compressed) { for (const d of [1, -1]) if (expandInfo(st, b, d, g)) n++; continue; }
+      for (const gate of st.gates) if (exitOk(st, b, gate, g)) n++;
+    }
+    return n;
+  }
+
+  /* Step 2: pull blocks OUT through gates using only legal (reversible) moves. */
+  function reverseSim(st, R, cfg) {
+    const log = [];
+    let steps = 0, last = null;
+    const movableCount = () => st.blocks.reduce((n, b) => n + (b.fixed ? 0 : 1), 0);
+    const extract = c => {
+      log.push({ t: 'extract', id: c.b.id, gi: c.gi, block: Object.assign({}, c.b) });
+      st.blocks.splice(st.blocks.indexOf(c.b), 1);
+      last = null;
+    };
+    while (movableCount() > cfg.preplaced) {
+      if (++steps > (cfg.maxSteps || 240)) return null;
+      const exits = [], expands = [];
+      for (const b of st.blocks) {
+        if (b.fixed) continue;
+        const g = occ(st, b.id);
+        if (b.soft && b.compressed) {
+          for (const dir of [1, -1]) { const e = expandInfo(st, b, dir, g); if (e) expands.push({ b, dir, e }); }
+          continue;
+        }
+        st.gates.forEach((gate, gi) => { if (exitOk(st, b, gate, g)) exits.push({ b, gi }); });
+      }
+      if (expands.length && (!exits.length || R() < 0.5)) {
+        const c = pick(expands, R);
+        log.push({ t: 'expand', id: c.b.id, dir: c.dir });
+        Object.assign(c.b, c.e); c.b.compressed = false; last = null;
+        continue;
+      }
+      if (exits.length && R() >= (cfg.shuffle || 0)) { extract(pick(exits, R)); continue; }
+      let slides = allSlides(st);
+      if (last) slides = slides.filter(s => !(s.b.id === last.id && s.x === last.x && s.y === last.y));
+      if (!slides.length) { if (exits.length) { extract(pick(exits, R)); continue; } return null; }
+      let choice;
+      if (!exits.length) {
+        let best = -1, bestList = [];
+        for (const s of slides) {
+          const ox = s.b.x, oy = s.b.y;
+          s.b.x = s.x; s.b.y = s.y;
+          const sc = exitScore(st);
+          s.b.x = ox; s.b.y = oy;
+          if (sc > best) { best = sc; bestList = [s]; } else if (sc === best) bestList.push(s);
+        }
+        choice = pick(bestList, R);
+      } else choice = pick(slides, R);
+      log.push({ t: 'move', id: choice.b.id, from: { x: choice.b.x, y: choice.b.y }, to: { x: choice.x, y: choice.y } });
+      last = { id: choice.b.id, x: choice.b.x, y: choice.b.y };
+      choice.b.x = choice.x; choice.b.y = choice.y;
+    }
+    for (let k = 0; k < (cfg.preShuffle || 0); k++) {
+      const slides = allSlides(st);
+      if (!slides.length) break;
+      const c = pick(slides, R);
+      log.push({ t: 'move', id: c.b.id, from: { x: c.b.x, y: c.b.y }, to: { x: c.x, y: c.y } });
+      c.b.x = c.x; c.b.y = c.y;
+    }
+    return log;
+  }
+
+  function itemFromBlock(b) {
+    return { type: 'block', id: b.id, w: b.w, h: b.h, color: b.color, axis: b.axis, soft: !!b.soft, softAxis: b.softAxis, base: !!b.base };
+  }
+
+  /* one forward action through the real rules; `queue` (optional) is consumed */
+  function applyAct(st, a, items, queue) {
+    if (a.t === 'enter') {
+      const item = queue ? queue[0] : items[a.id];
+      if (!item || item.type !== 'block' || item.id !== a.id) return false;
+      const opt = entryOptions(st, item, st.gates[a.gi]).find(o => o.offset === a.offset);
+      if (!opt) return false;
+      if (queue) queue.shift();
+      applyEnter(st, item, st.gates[a.gi], opt);
+      return true;
+    }
+    if (a.t === 'slide') {
+      const b = blockById(st, a.id);
+      if (!b || !canSlideTo(st, b, a.to.x, a.to.y)) return false;
+      b.x = a.to.x; b.y = a.to.y;
+      return true;
+    }
+    if (a.t === 'compress') {
+      const b = blockById(st, a.id), c = b && compressInfo(st, b, a.dir);
+      if (!c) return false;
+      Object.assign(b, c); b.compressed = true;
+      return true;
+    }
+    if (a.t === 'cap') {
+      if (queue) { const it = queue[0]; if (!it || it.type !== 'cap' || it.baseId !== a.baseId) return false; }
+      const b = blockById(st, a.baseId);
+      if (!b || b.capped || !isSnug(st, b)) return false;
+      if (queue) queue.shift();
+      b.capped = true;
+      return true;
+    }
+    return false;
+  }
+
+  /* Step 3: reverse the extraction log into the player's forward solution. */
+  function buildSolution(W, H, gates, initial, log) {
+    const st = { W, H, gates, blocks: cloneBlocks(initial) };
+    const acts = [], items = {};
+    for (let i = log.length - 1; i >= 0; i--) {
+      const a = log[i];
+      if (a.t === 'move') {
+        const b = blockById(st, a.id);
+        if (!b || !canSlideTo(st, b, a.from.x, a.from.y)) return null;
+        acts.push({ t: 'slide', id: a.id, to: { x: a.from.x, y: a.from.y } });
+        b.x = a.from.x; b.y = a.from.y;
+      } else if (a.t === 'expand') {
+        const b = blockById(st, a.id), c = b && compressInfo(st, b, a.dir);
+        if (!c) return null;
+        acts.push({ t: 'compress', id: a.id, dir: a.dir });
+        Object.assign(b, c); b.compressed = true;
+      } else {
+        const src = a.block, item = itemFromBlock(src), gate = gates[a.gi];
+        const offset = sideAxis(gate.side) === 'x' ? src.y : src.x;
+        const opt = entryOptions(st, item, gate).find(o => o.offset === offset);
+        if (!opt) return null;
+        acts.push({ t: 'enter', id: item.id, gi: a.gi, offset });
+        items[item.id] = item;
+        const b = applyEnter(st, item, gate, opt);
+        if (b.x !== src.x || b.y !== src.y) {
+          if (!canSlideTo(st, b, src.x, src.y)) return null;
+          acts.push({ t: 'slide', id: b.id, to: { x: src.x, y: src.y } });
+          b.x = src.x; b.y = src.y;
+        }
+      }
+    }
+    return { acts, items };
+  }
+
+  /* caps go into the queue right after the moment their base is seated for good */
+  function insertCaps(W, H, gates, initial, acts, items, baseIds) {
+    if (!baseIds.length) return acts.slice();
+    const st = { W, H, gates, blocks: cloneBlocks(initial) };
+    const lastMove = {}, snug = {};
+    baseIds.forEach(id => { lastMove[id] = -1; snug[id] = []; });
+    const record = i => { for (const id of baseIds) { const b = blockById(st, id); snug[id][i + 1] = !!b && isSnug(st, b); } };
+    record(-1);
+    for (let i = 0; i < acts.length; i++) {
+      const a = acts[i];
+      if (!applyAct(st, a, items, null)) return null;
+      if ((a.t === 'enter' || a.t === 'slide') && baseIds.includes(a.id)) lastMove[a.id] = i;
+      record(i);
+    }
+    const ins = {};
+    for (const id of baseIds) {
+      let k = null;
+      for (let i = lastMove[id]; i < acts.length; i++) if (snug[id][i + 1]) { k = i; break; }
+      if (k === null) return null;
+      (ins[k] = ins[k] || []).push(id);
+    }
+    const out = [];
+    if (ins[-1]) ins[-1].forEach(id => out.push({ t: 'cap', baseId: id }));
+    acts.forEach((a, i) => { out.push(a); if (ins[i]) ins[i].forEach(id => out.push({ t: 'cap', baseId: id })); });
+    return out;
+  }
+
+  /* Step 4: independent replay with the real queue — the solvability proof. */
+  function verifyLevel(level) {
+    const st = { W: level.W, H: level.H, gates: level.gates, blocks: cloneBlocks(level.initial) };
+    const q = level.queue.slice();
+    for (const a of level.solution) if (!applyAct(st, a, null, q)) return false;
+    return q.length === 0 && filledCount(st) === st.W * st.H && st.blocks.every(b => !b.base || b.capped);
+  }
+
+  function touching(a, b) {
+    const ox = a.x < b.x + b.w && b.x < a.x + a.w, oy = a.y < b.y + b.h && b.y < a.y + a.h;
+    const ax = a.x + a.w === b.x || b.x + b.w === a.x, ay = a.y + a.h === b.y || b.y + b.h === a.y;
+    return (ox && ay) || (oy && ax);
+  }
+  function assignColors(blocks, R, n) {
+    const mov = blocks.filter(b => !b.fixed);
+    const recent = [];
+    for (const b of mov) {
+      const used = new Set(mov.filter(o => o !== b && o.color >= 0 && o._c && touching(o, b)).map(o => o.color));
+      let cand = []; for (let i = 0; i < n; i++) if (!used.has(i) && !recent.includes(i)) cand.push(i);
+      if (!cand.length) for (let i = 0; i < n; i++) if (!used.has(i)) cand.push(i);
+      if (!cand.length) cand = [0];
+      b.color = pick(cand, R); b._c = true;
+      recent.push(b.color); if (recent.length > 2) recent.shift();
+    }
+    mov.forEach(b => { delete b._c; });
+  }
+
+  function randomGates(W, H, R) {
+    for (let t = 0; t < 60; t++) {
+      const gates = [];
+      for (const side of SIDES) {
+        const L = (side === 'left' || side === 'right') ? H : W;
+        if (L >= 7 && R() < 0.35) {
+          const l1 = 2, l2 = 2 + (R() < 0.5 ? 1 : 0), s1 = Math.floor(R() * 2);
+          const room = L - (s1 + l1 + 1) - l2;
+          if (room >= 0) { const s2 = s1 + l1 + 1 + Math.floor(R() * (room + 1)); gates.push({ side, start: s1, len: l1 }, { side, start: s2, len: l2 }); continue; }
+        }
+        const len = 2 + Math.floor(R() * 3), start = Math.floor(R() * (L - len + 1));
+        gates.push({ side, start, len });
+      }
+      if (gates.filter(g => g.len >= 3).length >= 2) return gates;
+    }
+    return SIDES.map(side => ({ side, start: 1, len: 3 }));
+  }
+
+  function generateLevel(cfg) {
+    const W = cfg.W, H = cfg.H;
+    for (let attempt = 0; attempt < (cfg.attempts || 700); attempt++) {
+      const R = mulberry32(Math.imul((cfg.seed | 0) + 1, 0x9E3779B1) ^ Math.imul(attempt + 1, 0x85EBCA77));
+      const gates = cfg.gates ? cfg.gates.map(g => Object.assign({}, g)) : randomGates(W, H, R);
+      const pre = new Uint8Array(W * H);
+      const blocks = [];
+      let nid = 1;
+      for (let k = 0; k < (cfg.obstacles || 0); k++) {
+        for (let tries = 0; tries < 40; tries++) {
+          const x = 1 + Math.floor(R() * (W - 2)), y = 1 + Math.floor(R() * (H - 2));
+          let ok = true;
+          for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++)
+            if (xx >= 0 && yy >= 0 && xx < W && yy < H && pre[yy * W + xx]) ok = false;
+          if (!ok) continue;
+          pre[y * W + x] = 1;
+          blocks.push({ id: nid++, x, y, w: 1, h: 1, fixed: true, color: -1, axis: 'free', soft: false, softAxis: null, compressed: false, base: false, capped: false, sock: false });
+          break;
+        }
+      }
+      const pieces = tileGrid(W, H, pre, R, cfg.maxOnes == null ? 1 : cfg.maxOnes);
+      if (!pieces) continue;
+      for (const p of pieces) blocks.push({ id: nid++, x: p.x, y: p.y, w: p.w, h: p.h, fixed: false, color: 0, axis: 'free', soft: false, softAxis: null, compressed: false, base: false, capped: false, sock: false });
+
+      const movable = blocks.filter(b => !b.fixed);
+      const order = shuffleInPlace(movable.slice(), R);
+      let softN = cfg.soft || 0, baseN = cfg.caps || 0;
+      for (const b of order) if (softN > 0 && b.w * b.h === 2) { b.soft = true; b.compressed = true; b.softAxis = b.w === 2 ? 'x' : 'y'; softN--; }
+      for (const b of order) if (baseN > 0 && !b.soft && b.w === 2 && b.h === 2) { b.base = true; baseN--; }
+      for (const b of order) if (baseN > 0 && !b.soft && !b.base && b.w * b.h === 2) { b.base = true; baseN--; }
+      if (softN > 0 || baseN > 0) continue;
+      for (const b of movable) if (!b.soft && !b.base && b.w !== b.h && R() < (cfg.axisProb || 0)) b.axis = b.w > b.h ? 'h' : 'v';
+      assignColors(blocks, R, 8);
+
+      const st = { W, H, gates, blocks: cloneBlocks(blocks) };
+      const log = reverseSim(st, R, cfg);
+      if (!log) continue;
+      const initial = cloneBlocks(st.blocks);
+      if (initial.some(b => b.soft)) continue;              // soft items must arrive via the queue
+      const sol = buildSolution(W, H, gates, initial, log);
+      if (!sol) continue;
+      const baseIds = blocks.filter(b => b.base).map(b => b.id);
+      const acts = insertCaps(W, H, gates, initial, sol.acts, sol.items, baseIds);
+      if (!acts) continue;
+      const byId = {}; blocks.forEach(b => { byId[b.id] = b; });
+      const queue = [];
+      for (const a of acts) {
+        if (a.t === 'enter') queue.push(sol.items[a.id]);
+        else if (a.t === 'cap') { const bb = byId[a.baseId]; queue.push({ type: 'cap', id: 'cap-' + a.baseId, baseId: a.baseId, w: bb.w, h: bb.h, color: bb.color }); }
+      }
+      if (queue.filter(q => q.type === 'block').length < (cfg.minQueue || 6)) continue;
+      const usedGates = new Set(acts.filter(a => a.t === 'enter').map(a => a.gi));
+      if (usedGates.size < Math.min(cfg.minGatesUsed || 2, gates.length)) continue;
+      const level = { W, H, gates, initial, queue, solution: acts, solvedLayout: blocks, attempt, seed: cfg.seed };
+      if (!verifyLevel(level)) continue;
+      return level;
+    }
+    return null;
+  }
+
+  global.PJ = {
+    SIDES, INWARD, sideAxis, mulberry32, cloneBlocks, occ, rectFree, blockById, filledCount,
+    canAxis, slideRange, canSlideTo, entryOptions, entryBlockReason, makeBlock, applyEnter,
+    compressInfo, expandInfo, isSnug, blockCanMove, headPossible, anyActionPossible,
+    pressAll, shrinkInfo, tileGrid, reverseSim, buildSolution, insertCaps, verifyLevel,
+    generateLevel, randomGates, applyAct
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+/* ==========================================================================
+   LEVEL BOOK — 5 hand-tuned trips (fixed seeds, reverse-generated and
+   verified at load), then an endless "long haul" series.
+   ========================================================================== */
+(function (global) {
+  'use strict';
+  const LEVELS = [
+    {
+      name: 'Hafta Sonu Çantası', code: 'IST-01', W: 6, H: 6, seed: 101,
+      gates: [{ side: 'top', start: 1, len: 3 }, { side: 'right', start: 2, len: 3 }, { side: 'bottom', start: 0, len: 4 }, { side: 'left', start: 1, len: 3 }],
+      obstacles: 0, preplaced: 2, axisProb: 0, soft: 0, caps: 0, shuffle: 0, preShuffle: 0, maxOnes: 1, minQueue: 8, minGatesUsed: 3,
+      intro: 'Kapıya dokun, eşya kayarak girsin.'
+    },
+    {
+      name: 'Tek Yön Biletli', code: 'AMS-02', W: 6, H: 6, seed: 207,
+      gates: [{ side: 'top', start: 0, len: 3 }, { side: 'right', start: 3, len: 3 }, { side: 'bottom', start: 2, len: 4 }, { side: 'left', start: 0, len: 4 }],
+      obstacles: 1, preplaced: 2, axisProb: 0.5, soft: 0, caps: 0, shuffle: 0, preShuffle: 0, maxOnes: 1, minQueue: 8, minGatesUsed: 3,
+      intro: 'Oklu bloklar sadece ok yönünde kayar.'
+    },
+    {
+      name: 'Yumuşak Kargo', code: 'BCN-03', W: 6, H: 7, seed: 311,
+      gates: [{ side: 'top', start: 1, len: 4 }, { side: 'right', start: 2, len: 3 }, { side: 'bottom', start: 1, len: 3 }, { side: 'left', start: 3, len: 3 }],
+      obstacles: 1, preplaced: 2, axisProb: 0.25, soft: 2, caps: 0, shuffle: 0.04, preShuffle: 1, maxOnes: 1, minQueue: 9, minGatesUsed: 3,
+      intro: 'Yaylı eşyayı duvara doğru itmeye devam et: büzüşür.'
+    },
+    {
+      name: 'Pim ve Kapak', code: 'TYO-04', W: 7, H: 7, seed: 419,
+      gates: [{ side: 'top', start: 2, len: 3 }, { side: 'right', start: 0, len: 3 }, { side: 'right', start: 4, len: 3 }, { side: 'bottom', start: 2, len: 4 }, { side: 'left', start: 1, len: 3 }],
+      obstacles: 2, preplaced: 3, axisProb: 0.3, soft: 1, caps: 1, shuffle: 0.05, preShuffle: 1, maxOnes: 1, minQueue: 11, minGatesUsed: 3,
+      intro: 'Pimli blok yerine oturunca kapağını tak.'
+    },
+    {
+      name: 'Uzun Uçuş', code: 'SYD-05', W: 7, H: 7, seed: 523,
+      gates: [{ side: 'top', start: 0, len: 2 }, { side: 'top', start: 4, len: 3 }, { side: 'right', start: 2, len: 3 }, { side: 'bottom', start: 1, len: 3 }, { side: 'left', start: 0, len: 2 }, { side: 'left', start: 4, len: 3 }],
+      obstacles: 2, preplaced: 3, axisProb: 0.35, soft: 2, caps: 2, shuffle: 0.06, preShuffle: 2, maxOnes: 1, minQueue: 11, minGatesUsed: 4,
+      intro: 'Hepsi bir arada. İyi yolculuklar.'
+    }
+  ];
+  const SIZES = [[7, 7], [6, 8], [7, 8], [7, 7]];
+  function levelCfg(i) {
+    if (i < LEVELS.length) return LEVELS[i];
+    const k = i - LEVELS.length, [W, H] = SIZES[k % SIZES.length];
+    return {
+      name: 'Aktarmalı Sefer ' + (k + 1), code: 'ZG-' + String(i + 1).padStart(2, '0'), W, H, seed: 9000 + i * 131, gates: null,
+      obstacles: 2, preplaced: 3, axisProb: 0.35, soft: 1 + (k % 2), caps: 1 + ((k >> 1) % 2), shuffle: 0.06, preShuffle: 2,
+      maxOnes: 1, minQueue: 11, minGatesUsed: 4, intro: 'Rastgele rota, garantili çözüm.'
+    };
+  }
+  /* deterministic fallback chain: same trip, nudged seed, then fewer specials */
+  function buildLevel(i) {
+    const base = levelCfg(i);
+    for (let n = 0; n < 12; n++) {
+      const cfg = Object.assign({}, base, { seed: base.seed + n * 7 });
+      if (n >= 8) { cfg.caps = 0; cfg.soft = Math.min(cfg.soft, 1); }
+      const lv = global.PJ.generateLevel(cfg);
+      if (lv) { lv.cfg = cfg; lv.index = i; return lv; }
+    }
+    return null;
+  }
+  global.PJ.LEVELS = LEVELS;
+  global.PJ.levelCfg = levelCfg;
+  global.PJ.buildLevel = buildLevel;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* ==========================================================================
+   PACK JAM — 3D stage, input, juice, boosters, win/fail flow.
+   ========================================================================== */
+(function () {
+  'use strict';
+  const E = window.PJ;
+  const $ = s => document.querySelector(s);
+  const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* ---------- look ---------- */
+  const PALETTE = ['#FF4D5A', '#FF8A1F', '#FFC53D', '#5FCB43', '#14BFAE', '#2F7FF0', '#8B5CF6', '#FF5FA8'];
+  const FABRIC = ['#F39BB2', '#8FCDF0', '#B7A3F5', '#FFCB85', '#9EE0C3', '#F7B39A', '#A9D7A0', '#F2A0D6'];
+  const GATE_COLORS = ['#FFC53D', '#14BFAE', '#FF5FA8', '#5FCB43', '#2F7FF0', '#FF8A1F'];
+  const SOCK_STRIPES = ['#FF4D5A', '#2F7FF0', '#5FCB43', '#FF8A1F', '#8B5CF6', '#14BFAE'];
+  const GAP = 0.08, WALL_T = 0.34, WALL_H = 0.42;
+  const H_HARD = 0.56, H_SOFT = 0.5, H_FIX = 0.4, H_SOCK = 0.44, H_CAP = 0.17;
+  const OUT = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
+  const CHEV_ROT = { left: 0, right: Math.PI, top: -Math.PI / 2, bottom: Math.PI / 2 };
+  const BOOSTERS = { undo: 5, vac: 2, shake: 2 };
+
+  const heightOf = b => b.fixed ? H_FIX : b.sock ? H_SOCK : b.soft ? H_SOFT : H_HARD;
+  const plasticHex = c => PALETTE[((c % PALETTE.length) + PALETTE.length) % PALETTE.length];
+  const colorOf = b => b.sock ? '#F6F2EA' : b.soft ? FABRIC[((b.color % FABRIC.length) + FABRIC.length) % FABRIC.length] : plasticHex(b.color);
+  const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  function lighten(hex, t) { const c = new THREE.Color(hex); c.lerp(new THREE.Color('#ffffff'), t); return '#' + c.getHexString(); }
+
+  /* ---------- state ---------- */
+  const G = {
+    idx: 0, level: null, st: null, queue: [], undo: [], boost: Object.assign({}, BOOSTERS),
+    moves: 0, boostersUsed: 0, nextId: 5000, mode: 'idle', selected: false, busy: 0, won: false, failOpen: false
+  };
+  window.__pj = { G, E };
+
+  /* ======================================================================
+     AUDIO — synthesized ASMR (no samples to fetch)
+     ====================================================================== */
+  const sfx = (() => {
+    let ctx = null, master = null, noiseBuf = null, muted = false;
+    try { muted = localStorage.getItem('pj-muted') === '1'; } catch (e) { /* storage blocked */ }
+    function unlock() {
+      if (!ctx) {
+        try {
+          ctx = new (window.AudioContext || window.webkitAudioContext)();
+          master = ctx.createGain(); master.gain.value = muted ? 0 : 0.55; master.connect(ctx.destination);
+          noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+          const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        } catch (e) { ctx = null; }
+      }
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+    }
+    function env(g, t, a, peak, dec) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
+    function tone(f, dur, type, vol, fEnd, delay) {
+      if (!ctx || muted) return;
+      const t = ctx.currentTime + (delay || 0), o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (fEnd) o.frequency.exponentialRampToValueAtTime(fEnd, t + dur);
+      env(g, t, 0.005, vol || 0.2, dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.06);
+    }
+    function noise(dur, ftype, f0, f1, vol, q, delay) {
+      if (!ctx || muted) return;
+      const t = ctx.currentTime + (delay || 0), s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = noiseBuf; f.type = ftype; f.Q.value = q || 0.8; f.frequency.setValueAtTime(f0, t);
+      if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      env(g, t, 0.004, vol || 0.2, dur); s.connect(f); f.connect(g); g.connect(master);
+      s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.06);
+    }
+    return {
+      unlock,
+      get muted() { return muted; },
+      setMuted(v) { muted = v; if (master) master.gain.value = v ? 0 : 0.55; try { localStorage.setItem('pj-muted', v ? '1' : '0'); } catch (e) { /* ignore */ } },
+      thock(k) { k = k || 1; tone(150 * k, 0.15, 'sine', 0.42, 58); noise(0.06, 'lowpass', 1500, 280, 0.26); },
+      click() { tone(1800, 0.025, 'square', 0.045); noise(0.025, 'highpass', 3200, null, 0.1); },
+      pick() { tone(520, 0.06, 'sine', 0.1, 760); },
+      slide(d) { noise(0.1 + d * 0.035, 'bandpass', 500, 1500, 0.07, 0.7); },
+      bump() { tone(105, 0.08, 'sine', 0.2, 70); },
+      squish() { noise(0.3, 'bandpass', 1500, 240, 0.32, 2.2); tone(320, 0.24, 'sine', 0.12, 110); },
+      whoosh() { noise(0.5, 'bandpass', 2400, 260, 0.3, 1.1); },
+      pop() { tone(620, 0.08, 'triangle', 0.16, 980); },
+      deny() { tone(230, 0.08, 'square', 0.05); tone(180, 0.12, 'square', 0.05, null, 0.09); },
+      snap() { tone(1500, 0.035, 'square', 0.06); tone(880, 0.1, 'sine', 0.2, 1320, 0.02); },
+      rattle() { for (let i = 0; i < 8; i++) { tone(100 + Math.random() * 140, 0.06, 'sine', 0.2, 60, i * 0.05); noise(0.04, 'lowpass', 1700, 500, 0.12, 0.8, i * 0.05); } },
+      zip(dur) { const n = 30; for (let i = 0; i < n; i++) noise(0.012, 'highpass', 2600, null, 0.2, 1, Math.pow(i / n, 0.85) * dur); },
+      thump() { tone(88, 0.32, 'sine', 0.55, 42); noise(0.14, 'lowpass', 900, 140, 0.32); },
+      win() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.28, 'triangle', 0.2, null, i * 0.11)); },
+      fail() { tone(392, 0.18, 'triangle', 0.18, 370); tone(311, 0.3, 'triangle', 0.18, 280, 0.18); },
+      undo() { tone(720, 0.07, 'sine', 0.13, 420); }
+    };
+  })();
+  const haptic = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* not allowed */ } };
+
+  /* ======================================================================
+     THREE SETUP
+     ====================================================================== */
+  const app = $('#app'), canvas = $('#gl');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.5, 200);
+
+  (function environment() {
+    const s = new THREE.Scene();
+    s.add(new THREE.Mesh(new THREE.BoxGeometry(24, 14, 24), new THREE.MeshBasicMaterial({ color: 0x3c4a5c, side: THREE.BackSide })));
+    const panel = (w, h, pos, rot, k) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k * 1.02), side: THREE.DoubleSide }));
+      m.position.set(pos[0], pos[1], pos[2]); m.rotation.set(rot[0], rot[1], rot[2]); s.add(m);
+    };
+    panel(12, 6, [0, 6.9, 0], [Math.PI / 2, 0, 0], 2.2);
+    panel(8, 4, [-11.9, 3, -2], [0, Math.PI / 2, 0], 1.4);
+    panel(8, 3, [11.9, 2, 3], [0, -Math.PI / 2, 0], 0.8);
+    panel(10, 3, [0, 2.5, 11.9], [0, Math.PI, 0], 1.0);
+    const pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromScene(s, 0.04).texture;
+    pm.dispose();
+  })();
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8095ad, 0.45));
+  const sun = new THREE.DirectionalLight(0xfff4e6, 1.9);
+  sun.position.set(-4.5, 13, 6.5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.025;
+  scene.add(sun); scene.add(sun.target);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShadowMaterial({ opacity: 0.2 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.66; ground.receiveShadow = true;
+  scene.add(ground);
+  const root = new THREE.Group(); scene.add(root);
+  window.__pj.renderer = renderer; window.__pj.scene = scene; window.__pj.sun = sun; window.__pj.camera = camera; window.__pj.root = root;
+  window.__pj.screenOf = (gx, gy, y) => { const v = new THREE.Vector3(gx - G.st.W / 2, y || 0.3, gy - G.st.H / 2); root.localToWorld(v); v.project(camera); const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; };
+
+  /* ---------- geometry helpers ---------- */
+  const geoCache = new Map();
+  function roundedBox(w, h, d, r, seg) {
+    seg = seg || 3;
+    const key = ['rb', w.toFixed(3), h.toFixed(3), d.toFixed(3), r.toFixed(3), seg].join('|');
+    if (geoCache.has(key)) return geoCache.get(key);
+    const s = seg * 2 + 1; r = Math.min(w / 2, h / 2, d / 2, r);
+    const box = new THREE.BoxGeometry(1, 1, 1, s, s, s), g = box.toNonIndexed(); box.dispose();
+    const pos = g.attributes.position.array, nor = g.attributes.normal.array;
+    const half = new THREE.Vector3(w / 2 - r, h / 2 - r, d / 2 - r), hs = 0.5 / s, p = new THREE.Vector3(), n = new THREE.Vector3();
+    for (let i = 0; i < pos.length; i += 3) {
+      p.fromArray(pos, i); n.copy(p);
+      n.x -= Math.sign(n.x) * hs; n.y -= Math.sign(n.y) * hs; n.z -= Math.sign(n.z) * hs; n.normalize();
+      pos[i] = half.x * Math.sign(p.x) + n.x * r; pos[i + 1] = half.y * Math.sign(p.y) + n.y * r; pos[i + 2] = half.z * Math.sign(p.z) + n.z * r;
+      nor[i] = n.x; nor[i + 1] = n.y; nor[i + 2] = n.z;
+    }
+    g.translate(0, h / 2, 0);
+    g.computeBoundingBox(); g.computeBoundingSphere();
+    geoCache.set(key, g);
+    return g;
+  }
+  function studGeo(r, h) {
+    const key = 'stud|' + r + '|' + h;
+    if (geoCache.has(key)) return geoCache.get(key);
+    const pts = [[0, 0], [r, 0], [r, h - 0.024], [r - 0.01, h - 0.006], [r - 0.03, h], [0, h]].map(q => new THREE.Vector2(q[0], q[1]));
+    const g = new THREE.LatheGeometry(pts, 22);
+    geoCache.set(key, g);
+    return g;
+  }
+  function arrowGeo(len) {
+    const key = 'arrow|' + len.toFixed(2);
+    if (geoCache.has(key)) return geoCache.get(key);
+    const t = 0.12, hw = 0.34, hl = 0.22, L = len / 2, s = new THREE.Shape();
+    s.moveTo(-L, 0); s.lineTo(-L + hl, hw / 2); s.lineTo(-L + hl, t / 2); s.lineTo(L - hl, t / 2); s.lineTo(L - hl, hw / 2);
+    s.lineTo(L, 0); s.lineTo(L - hl, -hw / 2); s.lineTo(L - hl, -t / 2); s.lineTo(-L + hl, -t / 2); s.lineTo(-L + hl, -hw / 2); s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.035, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.018, bevelSegments: 2, curveSegments: 1 });
+    g.rotateX(-Math.PI / 2); g.translate(0, 0.02, 0);
+    geoCache.set(key, g);
+    return g;
+  }
+  const planeCache = new Map();
+  function planeGeo(w, h) {
+    const key = w.toFixed(3) + 'x' + h.toFixed(3);
+    if (!planeCache.has(key)) planeCache.set(key, new THREE.PlaneGeometry(w, h));
+    return planeCache.get(key);
+  }
+
+  /* ---------- canvas textures ---------- */
+  function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function canvasTex(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = Math.max(2, Math.round(w)); c.height = Math.max(2, Math.round(h));
+    draw(c.getContext('2d'), c.width, c.height);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    return t;
+  }
+  const texCache = new Map();
+  const cachedTex = (key, w, h, draw) => { if (!texCache.has(key)) texCache.set(key, canvasTex(w, h, draw)); return texCache.get(key); };
+  const PX = 128;
+
+  function softTex(pw, ph, axis, compressed) {
+    return cachedTex(['soft', pw, ph, axis, compressed].join('|'), pw * PX, ph * PX, (c, w, h) => {
+      c.setLineDash([15, 11]); c.lineWidth = 6; c.strokeStyle = 'rgba(255,255,255,0.78)'; rr(c, 10, 10, w - 20, h - 20, 26); c.stroke(); c.setLineDash([]);
+      c.save(); c.translate(w / 2, h / 2); if (axis === 'y') c.rotate(Math.PI / 2);
+      const long = axis === 'y' ? h : w, L = Math.min(long * 0.62, compressed ? 150 : 230), amp = 24, n = compressed ? 9 : 7;
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      const coil = (col, off, lw) => {
+        c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+        for (let i = 0; i <= n; i++) { const x = -L / 2 + L * i / n, y = (i === 0 || i === n) ? 0 : (i % 2 ? -amp : amp); if (i) c.lineTo(x, y + off); else c.moveTo(x, y + off); }
+        c.stroke();
+      };
+      coil('rgba(40,30,60,0.22)', 5, 12); coil('#FFFFFF', 0, 10);
+      c.fillStyle = '#FFFFFF'; rr(c, -L / 2 - 12, -30, 10, 60, 4); c.fill(); rr(c, L / 2 + 2, -30, 10, 60, 4); c.fill();
+      c.restore();
+    });
+  }
+  function sockTex(stripe) {
+    return cachedTex('sock|' + stripe, PX, PX, (c, w, h) => {
+      const cx = w / 2, cy = h / 2, R = w * 0.42;
+      c.lineWidth = R * 0.24; c.strokeStyle = stripe; c.beginPath(); c.arc(cx, cy, R * 0.8, 0, Math.PI * 2); c.stroke();
+      c.lineWidth = R * 0.1; c.strokeStyle = 'rgba(255,255,255,0.9)'; c.beginPath(); c.arc(cx, cy, R * 0.8, 0, Math.PI * 2); c.stroke();
+      c.strokeStyle = 'rgba(110,98,88,0.5)'; c.lineWidth = 4; c.beginPath();
+      for (let a = 0; a < Math.PI * 5; a += 0.08) { const r = R * 0.58 * (a / (Math.PI * 5)), x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r; if (a) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.stroke();
+    });
+  }
+  function obstacleTex() {
+    return cachedTex('obst', PX, PX, (c, w, h) => {
+      c.save(); rr(c, 0, 0, w, h, 16); c.clip();
+      c.strokeStyle = 'rgba(255,197,61,0.5)'; c.lineWidth = 11;
+      for (let i = -h; i < w + h; i += 32) { c.beginPath(); c.moveTo(i, h); c.lineTo(i + h, 0); c.stroke(); }
+      c.restore();
+      const cx = w / 2, cy = h / 2 + 8;
+      c.fillStyle = '#20263A'; rr(c, cx - 24, cy - 16, 48, 38, 8); c.fill();
+      c.strokeStyle = '#20263A'; c.lineWidth = 9; c.beginPath(); c.arc(cx, cy - 16, 14, Math.PI, 0); c.stroke();
+      c.fillStyle = '#FFC53D'; c.beginPath(); c.arc(cx, cy + 2, 5, 0, Math.PI * 2); c.fill();
+    });
+  }
+  function baseTex(pw, ph) {
+    return cachedTex(['base', pw, ph].join('|'), pw * PX, ph * PX, (c, w, h) => {
+      c.setLineDash([18, 12]); c.lineWidth = 7; c.strokeStyle = 'rgba(255,255,255,0.85)'; rr(c, 8, 8, w - 16, h - 16, 18); c.stroke(); c.setLineDash([]);
+      c.strokeStyle = '#FFE08A'; c.lineWidth = 9; c.lineCap = 'round'; const k = 26;
+      [[8, 8, 1, 1], [w - 8, 8, -1, 1], [8, h - 8, 1, -1], [w - 8, h - 8, -1, -1]].forEach(([x, y, sx, sy]) => { c.beginPath(); c.moveTo(x, y + sy * k); c.lineTo(x, y); c.lineTo(x + sx * k, y); c.stroke(); });
+    });
+  }
+  function capTex(pw, ph) {
+    return cachedTex(['cap', pw, ph].join('|'), pw * PX, ph * PX, (c, w, h) => {
+      c.setLineDash([10, 8]); c.strokeStyle = 'rgba(255,255,255,0.75)'; c.lineWidth = 5; rr(c, 10, 10, w - 20, h - 20, 18); c.stroke(); c.setLineDash([]);
+      c.fillStyle = 'rgba(24,33,61,0.2)';
+      if (h > w) { c.fillRect(0, h * 0.3, w, h * 0.09); c.fillRect(0, h * 0.61, w, h * 0.09); }
+      else { c.fillRect(w * 0.3, 0, w * 0.09, h); c.fillRect(w * 0.61, 0, w * 0.09, h); }
+      c.strokeStyle = '#F5C451'; c.lineWidth = 8; rr(c, w / 2 - 24, h / 2 - 18, 48, 36, 7); c.stroke();
+      c.fillStyle = '#F5C451'; c.fillRect(w / 2 - 3, h / 2 - 18, 6, 36);
+    });
+  }
+  const chevBase = canvasTex(128, 192, (c, w, h) => {
+    c.lineCap = 'round'; c.lineJoin = 'round'; c.lineWidth = 22; c.strokeStyle = '#ffffff';
+    c.beginPath(); c.moveTo(w / 2 - 22, 38); c.lineTo(w / 2 + 24, h / 2); c.lineTo(w / 2 - 22, h - 38); c.stroke();
+  });
+  const puffTex = canvasTex(64, 64, (c, w, h) => {
+    const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.5, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+  });
+  function markTex(pw, ph) {
+    return cachedTex(['mark', pw, ph].join('|'), pw * 96, ph * 96, (c, w, h) => {
+      c.setLineDash([16, 12]); c.lineWidth = 8; c.strokeStyle = '#ffffff'; rr(c, 8, 8, w - 16, h - 16, 18); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.18)'; c.fill();
+    });
+  }
+  function floorTex(W, H) {
+    const S = 96;
+    return canvasTex(W * S, H * S, (c, w, h) => {
+      c.fillStyle = '#1B2441'; c.fillRect(0, 0, w, h);
+      c.strokeStyle = 'rgba(255,255,255,0.035)'; c.lineWidth = 2;
+      for (let i = -h; i < w; i += 13) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + h, h); c.stroke(); }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const px = x * S + 6, py = y * S + 6, s = S - 12;
+        rr(c, px, py, s, s, 16); c.fillStyle = '#25315A'; c.fill();
+        const gr = c.createLinearGradient(0, py, 0, py + s); gr.addColorStop(0, 'rgba(0,0,0,0.32)'); gr.addColorStop(0.3, 'rgba(0,0,0,0)');
+        c.fillStyle = gr; c.fill(); c.strokeStyle = 'rgba(150,180,240,0.16)'; c.lineWidth = 2; c.stroke();
+      }
+    });
+  }
+
+  /* ---------- materials ---------- */
+  const matCache = new Map();
+  function plastic(hex) {
+    const k = 'p' + hex;
+    if (!matCache.has(k)) matCache.set(k, new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: 0.34, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.18, envMapIntensity: 0.4 }));
+    return matCache.get(k);
+  }
+  function fabric(hex) {
+    const k = 'f' + hex;
+    if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.88, metalness: 0, envMapIntensity: 0.25 }));
+    return matCache.get(k);
+  }
+  function decalMat(tex) {
+    const k = 'd' + tex.uuid;
+    if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    return matCache.get(k);
+  }
+  const M = {
+    shell: new THREE.MeshPhysicalMaterial({ color: lin('#1F2C52'), roughness: 0.45, clearcoat: 0.35, envMapIntensity: 0.35 }),
+    wall: new THREE.MeshPhysicalMaterial({ color: lin('#2B3D72'), roughness: 0.4, clearcoat: 0.5, envMapIntensity: 0.4 }),
+    corner: new THREE.MeshStandardMaterial({ color: lin('#121729'), roughness: 0.5, envMapIntensity: 0.3 }),
+    obstacle: new THREE.MeshStandardMaterial({ color: lin('#3A4260'), roughness: 0.55, envMapIntensity: 0.3 }),
+    gold: new THREE.MeshStandardMaterial({ color: lin('#F2C14E'), metalness: 1, roughness: 0.26, envMapIntensity: 1.1 }),
+    metal: new THREE.MeshStandardMaterial({ color: lin('#C9CED8'), metalness: 1, roughness: 0.3, envMapIntensity: 1.0 }),
+    zip: new THREE.MeshStandardMaterial({ color: lin('#232838'), metalness: 0.6, roughness: 0.35 }),
+    arrow: new THREE.MeshPhysicalMaterial({ color: lin('#FFFFFF'), roughness: 0.3, clearcoat: 0.8, envMapIntensity: 0.35 }),
+    hit: new THREE.MeshBasicMaterial({ visible: false }),
+    ghost: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false })
+  };
+
+  /* ======================================================================
+     WORLD BUILDERS
+     ====================================================================== */
+  let suit = null, floorMesh = null, emptyOverlay = null, emptyCanvas = null, halo = null;
+  const gateViews = [], gateHits = [];
+  const meshes = new Map();
+
+  const W = () => G.st.W, Hh = () => G.st.H;
+  function localOf(gx, gy) { return { x: gx - G.st.W / 2, z: gy - G.st.H / 2 }; }
+  function blockCenter(b, x, y) { const p = localOf((x == null ? b.x : x) + b.w / 2, (y == null ? b.y : y) + b.h / 2); return new THREE.Vector3(p.x, 0, p.z); }
+  function sideCenter(side, a) {
+    const w = G.st.W, h = G.st.H;
+    if (side === 'left') return { x: -w / 2, z: a - h / 2 };
+    if (side === 'right') return { x: w / 2, z: a - h / 2 };
+    if (side === 'top') return { x: a - w / 2, z: -h / 2 };
+    return { x: a - w / 2, z: h / 2 };
+  }
+
+  function buildSuitcase() {
+    if (suit) root.remove(suit);
+    gateViews.length = 0; gateHits.length = 0;
+    suit = new THREE.Group(); root.add(suit);
+    const w = G.st.W, h = G.st.H, T = WALL_T;
+
+    const shell = new THREE.Mesh(roundedBox(w + 2 * T + 0.16, 0.62, h + 2 * T + 0.16, 0.24, 3), M.shell);
+    shell.position.y = -0.64; shell.castShadow = true; shell.receiveShadow = true; suit.add(shell);
+
+    floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: floorTex(w, h), roughness: 0.92, envMapIntensity: 0.2 }));
+    floorMesh.rotation.x = -Math.PI / 2; floorMesh.receiveShadow = true; suit.add(floorMesh);
+
+    emptyCanvas = document.createElement('canvas'); emptyCanvas.width = w * 64; emptyCanvas.height = h * 64;
+    const et = new THREE.CanvasTexture(emptyCanvas); et.encoding = THREE.sRGBEncoding;
+    emptyOverlay = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: et, transparent: true, depthWrite: false, opacity: 0.6 }));
+    emptyOverlay.rotation.x = -Math.PI / 2; emptyOverlay.position.y = 0.012; emptyOverlay.visible = false; suit.add(emptyOverlay);
+
+    for (const side of E.SIDES) {
+      const ax = E.sideAxis(side), L = ax === 'x' ? h : w, out = OUT[side];
+      const spans = G.st.gates.filter(g => g.side === side).map(g => [g.start, g.start + g.len]).sort((a, b) => a[0] - b[0]);
+      let cur = 0; const segs = [];
+      for (const [a, b] of spans) { if (a > cur) segs.push([cur, a]); cur = Math.max(cur, b); }
+      if (cur < L) segs.push([cur, L]);
+      for (const [a, b] of segs) {
+        const len = b - a, c = sideCenter(side, (a + b) / 2);
+        const m = new THREE.Mesh(roundedBox(ax === 'x' ? T : len, WALL_H, ax === 'x' ? len : T, 0.08, 2), M.wall);
+        m.position.set(c.x + out[0] * T / 2, 0, c.z + out[1] * T / 2); m.castShadow = true; m.receiveShadow = true; suit.add(m);
+      }
+    }
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const m = new THREE.Mesh(roundedBox(T + 0.14, WALL_H + 0.08, T + 0.14, 0.14, 2), M.corner);
+      m.position.set(sx * (w / 2 + T / 2), 0, sz * (h / 2 + T / 2)); m.castShadow = true; suit.add(m);
+    }
+
+    G.st.gates.forEach((gate, gi) => {
+      const col = GATE_COLORS[gi % GATE_COLORS.length], ax = E.sideAxis(gate.side), out = OUT[gate.side];
+      const mat = new THREE.MeshPhysicalMaterial({ color: lin(col), roughness: 0.34, clearcoat: 0.5, envMapIntensity: 0.4, emissive: lin(col), emissiveIntensity: 0 });
+      const c = sideCenter(gate.side, gate.start + gate.len / 2), depth = T + 0.62, across = gate.len - 0.08;
+      const mod = new THREE.Mesh(roundedBox(ax === 'x' ? depth : across, 0.66, ax === 'x' ? across : depth, 0.1, 2), mat);
+      mod.position.set(c.x + out[0] * depth / 2, -0.61, c.z + out[1] * depth / 2); mod.castShadow = true; mod.receiveShadow = true; suit.add(mod);
+
+      const tex = chevBase.clone(); tex.needsUpdate = true; tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, gate.len);
+      const chevMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.9 });
+      const chev = new THREE.Mesh(new THREE.PlaneGeometry(0.52, Math.max(0.5, gate.len - 0.3)), chevMat);
+      chev.rotation.set(-Math.PI / 2, 0, CHEV_ROT[gate.side]);
+      chev.position.set(c.x + out[0] * (T + 0.33), 0.058, c.z + out[1] * (T + 0.33)); suit.add(chev);
+
+      const L = ax === 'x' ? h : w;
+      for (const [bnd, sgn] of [[gate.start, -1], [gate.start + gate.len, 1]]) {
+        if (bnd <= 0 || bnd >= L) continue;
+        const pc = sideCenter(gate.side, bnd + sgn * T / 2);
+        const post = new THREE.Mesh(roundedBox(T * 0.9, WALL_H + 0.16, T * 0.9, 0.1, 2), mat);
+        post.position.set(pc.x + out[0] * T / 2, 0, pc.z + out[1] * T / 2); post.castShadow = true; suit.add(post);
+      }
+      const hd = T + 1.5, inset = 0.5;
+      const hit = new THREE.Mesh(new THREE.PlaneGeometry(ax === 'x' ? hd + inset : gate.len + 0.24, ax === 'x' ? gate.len + 0.24 : hd + inset), M.hit);
+      hit.rotation.x = -Math.PI / 2; hit.position.set(c.x + out[0] * (hd - inset) / 2, 0.15, c.z + out[1] * (hd - inset) / 2);
+      hit.userData.gate = gi; suit.add(hit); gateHits.push(hit);
+      gateViews.push({ gi, mat, chevMat, tex, valid: false, flash: 0 });
+    });
+
+    halo = new THREE.Mesh(planeGeo(1, 1), new THREE.MeshBasicMaterial({ color: lin('#FFE08A'), transparent: true, opacity: 0.5, depthWrite: false }));
+    halo.rotation.x = -Math.PI / 2; halo.position.y = 0.01; halo.visible = false; suit.add(halo);
+
+    const half = Math.max(w, h) / 2 + 3;
+    const sc = sun.shadow.camera; sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.near = 1; sc.far = 40; sc.updateProjectionMatrix();
+  }
+
+  /* ---------- blocks ---------- */
+  function meshKey(b) { return [b.w, b.h, +!!b.fixed, +!!b.sock, +!!b.soft, +!!b.compressed, +!!b.base, +!!b.capped, b.color, b.axis, b.softAxis].join('|'); }
+  function addDecal(group, tex, w, d, y) {
+    const m = new THREE.Mesh(planeGeo(w, d), decalMat(tex));
+    m.rotation.x = -Math.PI / 2; m.position.y = y + 0.004; m.renderOrder = 2; group.add(m);
+    return m;
+  }
+  function buildBlockGroup(b) {
+    const g = new THREE.Group(), w = b.w - GAP, d = b.h - GAP, top = heightOf(b);
+    let body;
+    if (b.fixed) {
+      body = new THREE.Mesh(roundedBox(w, top, d, 0.07, 2), M.obstacle);
+      addDecal(g, obstacleTex(), w - 0.14, d - 0.14, top);
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const bolt = new THREE.Mesh(studGeo(0.045, 0.03), M.metal);
+        bolt.position.set(sx * (w / 2 - 0.1), top - 0.005, sz * (d / 2 - 0.1)); g.add(bolt);
+      }
+    } else if (b.sock) {
+      body = new THREE.Mesh(roundedBox(w, top, d, 0.2, 3), fabric('#F6F2EA'));
+      addDecal(g, sockTex(SOCK_STRIPES[((b.color % SOCK_STRIPES.length) + SOCK_STRIPES.length) % SOCK_STRIPES.length]), w - 0.36, d - 0.36, top);
+    } else if (b.soft) {
+      const r = 0.19;
+      body = new THREE.Mesh(roundedBox(w, top, d, r, 3), fabric(colorOf(b)));
+      const dw = w - 2 * r + 0.04, dd = d - 2 * r + 0.04;
+      addDecal(g, softTex(dw, dd, b.softAxis, b.compressed), dw, dd, top);
+    } else {
+      const col = colorOf(b);
+      body = new THREE.Mesh(roundedBox(w, top, d, 0.1, 3), plastic(col));
+      if (b.axis === 'h' || b.axis === 'v') {
+        const long = (b.axis === 'h' ? b.w : b.h) - 0.42;
+        const a = new THREE.Mesh(arrowGeo(Math.max(0.55, long)), M.arrow);
+        a.position.y = top - 0.005; if (b.axis === 'v') a.rotation.y = Math.PI / 2; a.castShadow = true; g.add(a);
+      } else if (b.base) {
+        addDecal(g, baseTex(w - 0.2, d - 0.2), w - 0.2, d - 0.2, top);
+        for (let cy = 0; cy < b.h; cy++) for (let cx = 0; cx < b.w; cx++) {
+          const pin = new THREE.Mesh(studGeo(0.13, 0.13), M.gold);
+          pin.position.set(cx + 0.5 - b.w / 2, top - 0.006, cy + 0.5 - b.h / 2); pin.castShadow = true; g.add(pin);
+        }
+      } else {
+        const sm = plastic(col);
+        for (let cy = 0; cy < b.h; cy++) for (let cx = 0; cx < b.w; cx++) {
+          const s = new THREE.Mesh(studGeo(0.16, 0.09), sm);
+          s.position.set(cx + 0.5 - b.w / 2, top - 0.006, cy + 0.5 - b.h / 2); s.castShadow = true; g.add(s);
+        }
+      }
+      if (b.capped) {
+        const capG = new THREE.Group(); capG.name = 'cap';
+        const capCol = lighten(col, 0.38);
+        const cap = new THREE.Mesh(roundedBox(w - 0.03, H_CAP, d - 0.03, 0.07, 2), plastic(capCol));
+        cap.castShadow = true; cap.userData.blockId = b.id; capG.add(cap);
+        addDecal(capG, capTex(w - 0.12, d - 0.12), w - 0.12, d - 0.12, H_CAP);
+        capG.position.y = top - 0.01; g.add(capG);
+      }
+    }
+    body.castShadow = true; body.receiveShadow = true; body.userData.blockId = b.id;
+    g.add(body);
+    g.userData.body = body;
+    return g;
+  }
+  function ensureMesh(b) {
+    let m = meshes.get(b.id);
+    const key = meshKey(b);
+    if (m && m.key === key) return m;
+    const prevPos = m ? m.group.position.clone() : null;
+    if (m) { gsap.killTweensOf(m.group.position); gsap.killTweensOf(m.group.scale); root.remove(m.group); }
+    const group = buildBlockGroup(b);
+    if (prevPos) group.position.copy(prevPos); else group.position.copy(blockCenter(b));
+    root.add(group);
+    m = { group, key, side: b.enteredFrom, w: b.w, h: b.h, id: b.id };
+    meshes.set(b.id, m);
+    return m;
+  }
+  function removeMesh(id, animate) {
+    const m = meshes.get(id); if (!m) return;
+    meshes.delete(id);
+    const g = m.group;
+    gsap.killTweensOf(g.position); gsap.killTweensOf(g.scale);
+    if (!animate || REDUCED) { root.remove(g); return; }
+    const o = OUT[m.side];
+    if (o) {
+      gsap.to(g.position, { x: g.position.x + o[0] * (m.w + 1.8), z: g.position.z + o[1] * (m.h + 1.8), duration: 0.34, ease: 'power2.in' });
+      gsap.to(g.scale, { x: 0.4, y: 0.4, z: 0.4, duration: 0.3, delay: 0.1, ease: 'power2.in', onComplete: () => root.remove(g) });
+    } else {
+      gsap.to(g.position, { y: 2.4, duration: 0.3, ease: 'power2.in' });
+      gsap.to(g.scale, { x: 0.3, y: 0.3, z: 0.3, duration: 0.3, onComplete: () => root.remove(g) });
+    }
+  }
+  function clearMeshes() { for (const m of meshes.values()) { gsap.killTweensOf(m.group.position); gsap.killTweensOf(m.group.scale); root.remove(m.group); } meshes.clear(); }
+
+  function syncAll(animate) {
+    const ids = new Set(G.st.blocks.map(b => b.id));
+    for (const id of Array.from(meshes.keys())) if (!ids.has(id)) removeMesh(id, animate);
+    for (const b of G.st.blocks) {
+      const existed = meshes.has(b.id);
+      const m = ensureMesh(b);
+      const t = blockCenter(b);
+      gsap.killTweensOf(m.group.position);
+      if (animate && !REDUCED) {
+        if (!existed) { m.group.scale.setScalar(0.3); gsap.to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.35, ease: 'back.out(2.5)' }); }
+        gsap.to(m.group.position, { x: t.x, y: 0, z: t.z, duration: 0.28, ease: 'power2.out' });
+      } else { m.group.position.copy(t); m.group.scale.set(1, 1, 1); }
+    }
+  }
+
+  /* ---------- juice ---------- */
+  const puffMat = new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0.85 });
+  function puff(x, z, n, spread, y) {
+    if (REDUCED) return;
+    for (let i = 0; i < n; i++) {
+      const s = new THREE.Sprite(puffMat.clone());
+      s.position.set(x + (Math.random() - 0.5) * spread, (y || 0.12) + Math.random() * 0.1, z + (Math.random() - 0.5) * spread);
+      s.scale.setScalar(0.12); root.add(s);
+      const dur = 0.45 + Math.random() * 0.25;
+      gsap.to(s.scale, { x: 0.5 + Math.random() * 0.25, y: 0.5 + Math.random() * 0.25, duration: dur, ease: 'power2.out' });
+      gsap.to(s.position, { y: s.position.y + 0.35, x: s.position.x + (Math.random() - 0.5) * 0.5, z: s.position.z + (Math.random() - 0.5) * 0.5, duration: dur });
+      gsap.to(s.material, { opacity: 0, duration: dur, ease: 'power1.in', onComplete: () => { root.remove(s); s.material.dispose(); } });
+    }
+  }
+  function squash(group, axis, k) {
+    if (REDUCED) return;
+    k = k || 1;
+    gsap.killTweensOf(group.scale);
+    const a = 1 - 0.13 * k, p = 1 + 0.08 * k;
+    group.scale.set(axis === 'x' ? a : p, 1 - 0.06 * k, axis === 'y' ? a : p);
+    gsap.to(group.scale, { x: 1, y: 1, z: 1, duration: 0.55, ease: 'elastic.out(1, 0.38)' });
+  }
+  function landFx(b, axis, dir) {
+    const m = meshes.get(b.id); if (!m) return;
+    squash(m.group, axis, 1);
+    const c = blockCenter(b);
+    if (axis === 'x') puff(c.x + dir * b.w / 2, c.z, 4, b.h * 0.8);
+    else puff(c.x, c.z + dir * b.h / 2, 4, b.w * 0.8);
+    sfx.thock(0.9 + Math.random() * 0.2); haptic(10);
+  }
+  function wiggle(id) {
+    const m = meshes.get(id); if (!m || REDUCED) return;
+    gsap.fromTo(m.group.rotation, { y: 0 }, { y: 0.09, duration: 0.06, yoyo: true, repeat: 5, ease: 'sine.inOut', onComplete: () => { m.group.rotation.y = 0; } });
+  }
+
+  /* ======================================================================
+     HUD
+     ====================================================================== */
+  const el = {
+    belt: $('#belt'), hint: $('#hint'), fillBar: $('#fillBar'), fillPct: $('#fillPct'), fillCells: $('#fillCells'),
+    nUndo: $('#nUndo'), nVac: $('#nVac'), nShake: $('#nShake'), bUndo: $('#bUndo'), bVac: $('#bVac'), bShake: $('#bShake'),
+    toast: $('#toast'), winOv: $('#winOv'), failOv: $('#failOv'), helpOv: $('#helpOv'), shakePick: $('#shakePick'),
+    hudTop: $('#hudTop'), hudBottom: $('#hudBottom'), btnSound: $('#btnSound')
+  };
+  let toastTimer = 0;
+  function toast(msg, ms) {
+    el.toast.textContent = msg; el.toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.toast.classList.remove('show'), ms || 2400);
+  }
+  const SVG = {
+    h: '<svg viewBox="0 0 40 20"><path d="M3 10h34M10 3 3 10l7 7M30 3l7 7-7 7" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    v: '<svg viewBox="0 0 20 40"><path d="M10 3v34M3 10l7-7 7 7M3 30l7 7 7-7" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    spring: '<svg viewBox="0 0 44 20"><path d="M4 10l5-7 6 14 6-14 6 14 6-14 6 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    springV: '<svg viewBox="0 0 20 44"><path d="M10 4l-7 5 14 6-14 6 14 6-14 6 7 6" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    sock: c => `<svg class="mini-sock" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="#F6F2EA" stroke="rgba(0,0,0,.15)" stroke-width="2"/><circle cx="22" cy="22" r="14" fill="none" stroke="${c}" stroke-width="5"/><path d="M22 22m-2 0a2 2 0 1 1 4 0a5 5 0 1 1-9 1a8 8 0 1 1 14 -3" fill="none" stroke="rgba(110,98,88,.55)" stroke-width="2" stroke-linecap="round"/></svg>`,
+    soundOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
+    soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'
+  };
+  function itemLabel(it) {
+    if (it.type === 'sock') return 'joker 1×1';
+    if (it.type === 'cap') return 'kapak ' + it.w + '×' + it.h;
+    const s = it.w + '×' + it.h;
+    if (it.soft) return 'yay ' + s;
+    if (it.axis === 'h') return '↔ ' + s;
+    if (it.axis === 'v') return '↕ ' + s;
+    if (it.base) return 'pim ' + s;
+    return s;
+  }
+  function miniHTML(it, box) {
+    if (it.type === 'sock') return SVG.sock(SOCK_STRIPES[((it.color % SOCK_STRIPES.length) + SOCK_STRIPES.length) % SOCK_STRIPES.length]);
+    const c = Math.max(9, Math.floor(Math.min(box / it.w, (box - 8) / it.h, 21)));
+    let col, cls = 'mini', inner = '';
+    if (it.type === 'cap') { col = lighten(plasticHex(it.color), 0.38); cls += ' cap'; }
+    else if (it.soft) { col = FABRIC[it.color % FABRIC.length]; cls += ' soft'; inner = it.softAxis === 'y' ? SVG.springV : SVG.spring; }
+    else { col = plasticHex(it.color); if (it.axis === 'h' || it.axis === 'v') { cls += ' axis'; inner = SVG[it.axis]; } else if (it.base) cls += ' base'; }
+    return `<span class="${cls}" style="--w:${it.w};--h:${it.h};--c:${c}px;--col:${col}">${inner}</span>`;
+  }
+  let lastHeadId = null;
+  function renderQueue() {
+    const items = G.queue.slice(0, 3), rest = G.queue.length - items.length;
+    const shifted = lastHeadId !== null && items.length && items[0].id !== lastHeadId;
+    lastHeadId = items.length ? items[0].id : null;
+    if (!items.length) { el.belt.innerHTML = '<span class="empty-belt">Kuyruk boş</span>'; return; }
+    el.belt.innerHTML = items.map((it, i) => {
+      const head = i === 0;
+      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 64 : 52)}<span class="tray-lbl">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
+    }).join('') + (rest > 0 ? `<span class="more" aria-label="${rest} eşya daha">+${rest}</span>` : '');
+    if (shifted && !REDUCED) { el.belt.classList.remove('roll'); void el.belt.offsetWidth; el.belt.classList.add('roll'); }
+    const ht = $('#headTray');
+    if (ht) {
+      ht.addEventListener('pointerdown', onTrayDown);
+      ht.addEventListener('click', e => { if (e.detail === 0 && G.queue[0] && !G.busy && !G.won) onTrayTap(G.queue[0]); });
+    }
+  }
+  function hintText() {
+    const head = G.queue[0];
+    if (G.mode === 'vacuum') return 'Küçültülecek bloğa dokun';
+    if (!head) return E.filledCount(G.st) === G.st.W * G.st.H ? 'Tamamlandı' : 'Boşlukları kapat';
+    if (head.type === 'sock') return 'Boş bir kareye dokun';
+    if (head.type === 'cap') {
+      const b = E.blockById(G.st, head.baseId);
+      return b && E.isSnug(G.st, b) ? 'Kapak hazır: pimli bloğa dokun' : 'Pimli bloğun etrafını doldur';
+    }
+    return gateViews.some(v => v.valid) ? 'Kapıya dokun ya da sürükle' : 'Kapılar dolu: içeride yer aç';
+  }
+  function updateGates() {
+    const head = G.queue[0], g = E.occ(G.st);
+    for (const v of gateViews) v.valid = !!head && head.type === 'block' && G.mode === 'idle' && E.entryOptions(G.st, head, G.st.gates[v.gi], g).length > 0;
+  }
+  function updateHalo() {
+    const head = G.queue[0];
+    if (!halo) return;
+    if (head && head.type === 'cap' && G.mode === 'idle') {
+      const b = E.blockById(G.st, head.baseId);
+      if (b) {
+        const c = blockCenter(b); halo.visible = true; halo.position.set(c.x, 0.01, c.z); halo.scale.set(b.w + 0.24, b.h + 0.24, 1);
+        halo.material.color.set(E.isSnug(G.st, b) ? '#FFE08A' : '#FF8A5C').convertSRGBToLinear();
+        return;
+      }
+    }
+    halo.visible = false;
+  }
+  function updateEmptyOverlay() {
+    if (!emptyOverlay) return;
+    const head = G.queue[0], show = !!head && head.type === 'sock' && G.mode === 'idle';
+    emptyOverlay.visible = show;
+    if (!show) return;
+    const c = emptyCanvas.getContext('2d'), g = E.occ(G.st), S = 64;
+    c.clearRect(0, 0, emptyCanvas.width, emptyCanvas.height);
+    for (let y = 0; y < G.st.H; y++) for (let x = 0; x < G.st.W; x++) {
+      if (g[y * G.st.W + x]) continue;
+      rr(c, x * S + 8, y * S + 8, S - 16, S - 16, 12); c.fillStyle = 'rgba(255,230,160,0.55)'; c.fill();
+      c.setLineDash([8, 6]); c.lineWidth = 3; c.strokeStyle = '#FFE6A0'; c.stroke(); c.setLineDash([]);
+    }
+    emptyOverlay.material.map.needsUpdate = true;
+  }
+  function updateHUD() {
+    const total = G.st.W * G.st.H, filled = E.filledCount(G.st), pct = Math.round(filled / total * 100);
+    el.fillBar.style.width = pct + '%'; el.fillBar.classList.toggle('full', filled === total);
+    el.fillPct.textContent = pct + '%'; el.fillCells.textContent = filled + '/' + total;
+    el.nUndo.textContent = G.boost.undo; el.nVac.textContent = G.boost.vac; el.nShake.textContent = G.boost.shake;
+    el.bUndo.setAttribute('aria-disabled', String(G.boost.undo <= 0 || !G.undo.length));
+    el.bVac.setAttribute('aria-disabled', String(G.boost.vac <= 0));
+    el.bShake.setAttribute('aria-disabled', String(G.boost.shake <= 0));
+    el.bVac.classList.toggle('armed', G.mode === 'vacuum');
+    updateGates(); updateHalo(); updateEmptyOverlay();
+    el.hint.textContent = hintText();
+  }
+  function setSoundIcon() { el.btnSound.innerHTML = sfx.muted ? SVG.soundOff : SVG.soundOn; el.btnSound.setAttribute('aria-label', sfx.muted ? 'Sesi aç' : 'Sesi kapat'); }
+
+  /* ======================================================================
+     CAMERA FIT — frame the suitcase inside the space between the HUD bands
+     ====================================================================== */
+  const PITCH = THREE.MathUtils.degToRad(61);
+  function fitCamera() {
+    const w = app.clientWidth, h = app.clientHeight;
+    if (!w || !h || !G.st) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    const ar = app.getBoundingClientRect();
+    const top = Math.max(0, el.hudTop.getBoundingClientRect().bottom - ar.top);
+    const bot = Math.max(0, ar.bottom - el.hudBottom.getBoundingClientRect().top);
+    app.style.setProperty('--bot', bot + 'px');
+    const freeH = Math.max(140, h - top - bot);
+    const shift = (top + freeH / 2) - h / 2;
+    camera.setViewOffset(w, h, 0, -shift, w, h);
+    const dir = new THREE.Vector3(0, Math.sin(PITCH), Math.cos(PITCH));
+    const target = new THREE.Vector3(0, 0, 0.15);
+    const hx = G.st.W / 2 + WALL_T + 0.78, hz = G.st.H / 2 + WALL_T + 0.78;
+    const pts = [];
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (const y of [-0.6, 0.9]) pts.push(new THREE.Vector3(sx * hx, y, sz * hz));
+    const padX = 12, padY = 8, v = new THREE.Vector3();
+    let lo = 4, hi = 160;
+    for (let i = 0; i < 30; i++) {
+      const d = (lo + hi) / 2;
+      camera.position.copy(target).addScaledVector(dir, d); camera.lookAt(target);
+      camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+      let ok = true;
+      for (const p of pts) {
+        v.copy(p).project(camera);
+        const px = (v.x + 1) / 2 * w, py = (1 - v.y) / 2 * h;
+        if (px < padX || px > w - padX || py < top + padY || py > h - bot - padY) { ok = false; break; }
+      }
+      if (ok) hi = d; else lo = d;
+    }
+    camera.position.copy(target).addScaledVector(dir, hi); camera.lookAt(target);
+    camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+  }
+
+  /* ======================================================================
+     PICKING
+     ====================================================================== */
+  const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.32), tmpV = new THREE.Vector3();
+  function setRay(e) {
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+  }
+  function pointerGrid(e) {
+    setRay(e);
+    if (!raycaster.ray.intersectPlane(dragPlane, tmpV)) return null;
+    root.worldToLocal(tmpV);
+    return { gx: tmpV.x + G.st.W / 2, gy: tmpV.z + G.st.H / 2 };
+  }
+  function pickBlock(e) {
+    setRay(e);
+    const groups = Array.from(meshes.values()).map(m => m.group);
+    const hits = raycaster.intersectObjects(groups, true);
+    for (const h of hits) {
+      let o = h.object;
+      while (o && o.userData.blockId == null) o = o.parent;
+      if (o) { const b = E.blockById(G.st, o.userData.blockId); if (b) return b; }
+    }
+    return null;
+  }
+  function pickGate(e) {
+    setRay(e);
+    const hits = raycaster.intersectObjects(gateHits, false);
+    if (!hits.length) return null;
+    const p = suit.worldToLocal(hits[0].point.clone()), gi = hits[0].object.userData.gate, gate = G.st.gates[gi];
+    const along = E.sideAxis(gate.side) === 'x' ? p.z + G.st.H / 2 : p.x + G.st.W / 2;
+    return { gi, along };
+  }
+
+  /* ======================================================================
+     ACTIONS
+     ====================================================================== */
+  const lock = () => { G.busy++; };
+  const unlock = () => { G.busy = Math.max(0, G.busy - 1); };
+  function snapshot() { return { blocks: E.cloneBlocks(G.st.blocks), queue: G.queue.slice(), nextId: G.nextId, moves: G.moves }; }
+  function pushUndo() { G.undo.push(snapshot()); if (G.undo.length > 60) G.undo.shift(); }
+
+  function bestOption(item, gate, along) {
+    const opts = E.entryOptions(G.st, item, gate);
+    if (!opts.length) return null;
+    const cross = E.sideAxis(gate.side) === 'x' ? item.h : item.w;
+    if (along == null) return opts[0];
+    let best = opts[0], bd = Infinity;
+    for (const o of opts) { const dd = Math.abs(o.offset + cross / 2 - along); if (dd < bd) { bd = dd; best = o; } }
+    return best;
+  }
+  function rejectGate(gi, item) {
+    const gate = G.st.gates[gi], why = E.entryBlockReason(G.st, item, gate), cross = E.sideAxis(gate.side) === 'x' ? item.h : item.w;
+    const msg = {
+      'axis-h': 'Bu eşya sadece ↔ yatay kayar: sol ya da sağ kapıyı kullan.',
+      'axis-v': 'Bu eşya sadece ↕ dikey kayar: üst ya da alt kapıyı kullan.',
+      narrow: `Kapı ${gate.len} kare, eşya ${cross} kare genişliğinde. Sığmıyor.`,
+      blocked: 'Bu kapının önü dolu. Önce içeride yer aç.'
+    }[why];
+    toast(msg); sfx.deny(); haptic([8, 40, 8]);
+    const v = gateViews[gi]; if (v) v.flash = 1;
+  }
+  function tryEnterAt(gi, along) {
+    const item = G.queue[0];
+    if (!item || item.type !== 'block') return;
+    const opt = bestOption(item, G.st.gates[gi], along);
+    if (!opt) { rejectGate(gi, item); return; }
+    doEnter(item, gi, opt);
+  }
+  function outsideCenter(b, side) {
+    const p = blockCenter(b), off = WALL_T + 0.8;
+    if (side === 'left') p.x = -G.st.W / 2 - off - b.w / 2;
+    else if (side === 'right') p.x = G.st.W / 2 + off + b.w / 2;
+    else if (side === 'top') p.z = -G.st.H / 2 - off - b.h / 2;
+    else p.z = G.st.H / 2 + off + b.h / 2;
+    return p;
+  }
+  function doEnter(item, gi, opt, onDone) {
+    const gate = G.st.gates[gi];
+    pushUndo();
+    G.queue.shift(); G.selected = false;
+    const b = E.applyEnter(G.st, item, gate, opt);
+    G.moves++;
+    const m = ensureMesh(b), start = outsideCenter(b, gate.side), end = blockCenter(b);
+    const axis = E.sideAxis(gate.side), dir = (gate.side === 'left' || gate.side === 'top') ? 1 : -1;
+    m.group.position.copy(start);
+    renderQueue(); updateHUD(); hideGhost();
+    const v = gateViews[gi]; if (v) v.flash = 1;
+    if (REDUCED) { m.group.position.copy(end); sfx.thock(); afterAction(); if (onDone) onDone(); return; }
+    lock();
+    m.group.scale.setScalar(0.45);
+    const dist = start.distanceTo(end);
+    gsap.timeline({ onComplete: () => { unlock(); afterAction(); if (onDone) onDone(); } })
+      .to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.15, ease: 'back.out(3)', onStart: () => sfx.pop() })
+      .to(m.group.position, { x: end.x, z: end.z, duration: 0.12 + dist * 0.045, ease: 'power2.in', onStart: () => sfx.slide(dist) }, '-=0.03')
+      .add(() => landFx(b, axis, dir));
+  }
+  function placeSock(cx, cy, onDone) {
+    const item = G.queue[0];
+    if (!item || item.type !== 'sock') return;
+    const g = E.occ(G.st);
+    if (cx < 0 || cy < 0 || cx >= G.st.W || cy >= G.st.H || g[cy * G.st.W + cx]) { toast('Joker çorap sadece boş bir kareye sığar.'); sfx.deny(); return; }
+    pushUndo(); G.queue.shift(); G.moves++;
+    const b = { id: item.id, w: 1, h: 1, x: cx, y: cy, color: item.color, axis: 'free', soft: false, softAxis: null, compressed: false, base: false, capped: false, fixed: false, sock: true, enteredFrom: 'drop' };
+    G.st.blocks.push(b);
+    const m = ensureMesh(b), end = blockCenter(b);
+    renderQueue(); updateHUD(); hideGhost();
+    if (REDUCED) { m.group.position.copy(end); afterAction(); if (onDone) onDone(); return; }
+    lock();
+    m.group.position.set(end.x, 3.2, end.z); m.group.scale.set(0.8, 1.25, 0.8);
+    gsap.timeline({ onComplete: () => { unlock(); afterAction(); if (onDone) onDone(); } })
+      .to(m.group.position, { y: 0, duration: 0.32, ease: 'power3.in' })
+      .add(() => { sfx.thock(1.3); haptic(8); puff(end.x, end.z, 5, 0.6); m.group.scale.set(1.18, 0.7, 1.18); })
+      .to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: 'elastic.out(1,0.35)' });
+  }
+  function placeCap(onDone) {
+    const item = G.queue[0];
+    if (!item || item.type !== 'cap') return;
+    const b = E.blockById(G.st, item.baseId);
+    if (!b) return;
+    if (!E.isSnug(G.st, b)) {
+      wiggle(b.id); sfx.deny();
+      toast('Kapak için önce pimli blok yerine oturmalı: hiçbir yöne kayamayacak hale gelsin.', 3000);
+      return;
+    }
+    pushUndo(); G.queue.shift(); b.capped = true; G.moves++;
+    const m = ensureMesh(b), cap = m.group.getObjectByName('cap');
+    renderQueue(); updateHUD(); hideGhost();
+    if (!cap || REDUCED) { sfx.snap(); afterAction(); if (onDone) onDone(); return; }
+    lock();
+    const rest = cap.position.clone(), c = blockCenter(b);
+    const dl = c.x + G.st.W / 2, dr = G.st.W / 2 - c.x, dt = c.z + G.st.H / 2, db = G.st.H / 2 - c.z, mn = Math.min(dl, dr, dt, db);
+    const ox = mn === dl ? -1 : mn === dr ? 1 : 0, oz = ox ? 0 : (mn === dt ? -1 : 1), far = mn + 1.6;
+    cap.position.set(rest.x + ox * far, rest.y + 0.32, rest.z + oz * far);
+    gsap.timeline({ onComplete: () => { unlock(); afterAction(); if (onDone) onDone(); } })
+      .to(cap.position, { x: rest.x, z: rest.z, duration: 0.42, ease: 'power2.out', onStart: () => sfx.slide(2) })
+      .to(cap.position, { y: rest.y, duration: 0.12, ease: 'power3.in' })
+      .add(() => { sfx.snap(); haptic(12); squash(m.group, 'y', 0.8); puff(c.x, c.z, 4, Math.max(b.w, b.h) * 0.7, 0.6); });
+  }
+  function commitSlide(b, x, y, animate) {
+    pushUndo(); b.x = x; b.y = y; G.moves++;
+    const m = ensureMesh(b), t = blockCenter(b);
+    if (animate && !REDUCED) gsap.to(m.group.position, { x: t.x, y: 0, z: t.z, duration: 0.2, ease: 'power2.out' });
+    else m.group.position.copy(t);
+  }
+  function commitCompress(b, fromX, fromY, dir) {
+    const probe = Object.assign({}, b, { x: fromX, y: fromY });
+    const c = E.compressInfo(G.st, probe, dir, E.occ(G.st, b.id));
+    if (!c) return false;
+    pushUndo();
+    Object.assign(b, c); b.compressed = true; G.moves++;
+    const m = ensureMesh(b), t = blockCenter(b), ax = b.softAxis;
+    m.group.position.set(t.x, 0, t.z);
+    if (!REDUCED) {
+      if (ax === 'x') m.group.scale.set(1.45, 0.9, 1); else m.group.scale.set(1, 0.9, 1.45);
+      gsap.to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.6, ease: 'elastic.out(1,0.33)' });
+      const trail = -dir;
+      if (ax === 'x') puff(t.x + trail * (b.w / 2 + 0.4), t.z, 6, 0.7); else puff(t.x, t.z + trail * (b.h / 2 + 0.4), 6, 0.7);
+    }
+    sfx.squish(); haptic([10, 30, 14]);
+    toast('Sıkıştı! 1×3 → 1×2');
+    return true;
+  }
+
+  function tryVacuum(b) {
+    if (b.fixed || b.sock || b.base || b.capped) {
+      toast(b.base ? 'Pimli bloklar vakumlanamaz: kapağı ona göre.' : 'Vakum bu parçada çalışmaz.'); sfx.deny(); wiggle(b.id); return;
+    }
+    const s = E.shrinkInfo(b);
+    if (!s) { toast('Bu blok zaten en küçük boyutta.'); sfx.deny(); return; }
+    pushUndo();
+    G.boost.vac--; G.boostersUsed++; G.mode = 'idle';
+    const oldW = b.w, oldH = b.h, oldC = blockCenter(b);
+    b.w = s.w; b.h = s.h;
+    if (b.soft) b.compressed = true;
+    const socks = [];
+    for (let i = 0; i < s.freed; i++) socks.push({ type: 'sock', id: G.nextId++, color: (G.nextId + i) % SOCK_STRIPES.length, w: 1, h: 1 });
+    G.queue.unshift(...socks);
+    G.moves++;
+    const m = ensureMesh(b), t = blockCenter(b);
+    sfx.whoosh(); haptic(20);
+    if (!REDUCED) {
+      m.group.position.copy(oldC);
+      m.group.scale.set(oldW / b.w, 1.12, oldH / b.h);
+      gsap.to(m.group.position, { x: t.x, z: t.z, duration: 0.4, ease: 'power2.inOut' });
+      gsap.to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.7, ease: 'elastic.out(1,0.4)' });
+      puff(oldC.x, oldC.z, 10, Math.max(oldW, oldH) * 0.8, 0.5);
+    } else m.group.position.copy(t);
+    toast(`Vakumlandı! ${s.freed} joker çorap kuyruğun başına eklendi.`, 2800);
+    renderQueue(); updateHUD(); afterAction();
+  }
+
+  function doShake(dirName) {
+    el.shakePick.hidden = true;
+    const vec = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[dirName];
+    const trial = { W: G.st.W, H: G.st.H, gates: G.st.gates, blocks: E.cloneBlocks(G.st.blocks) };
+    if (!E.pressAll(trial, vec)) { toast('Bu yönde kapanacak boşluk yok. Booster harcanmadı.'); sfx.deny(); G.mode = 'idle'; updateHUD(); return; }
+    pushUndo();
+    const before = new Map(G.st.blocks.map(b => [b.id, { x: b.x, y: b.y }]));
+    G.st.blocks = trial.blocks;
+    G.boost.shake--; G.boostersUsed++; G.moves++; G.mode = 'idle';
+    updateHUD();
+    lock(); sfx.rattle(); haptic([15, 30, 15, 30, 15]);
+    const tl = gsap.timeline({ onComplete: () => { unlock(); afterAction(); } });
+    if (!REDUCED) {
+      tl.to(root.rotation, { z: 0.035, duration: 0.05, yoyo: true, repeat: 5, ease: 'sine.inOut' }, 0)
+        .to(root.position, { x: vec[0] * 0.18, z: vec[1] * 0.18, duration: 0.06, yoyo: true, repeat: 5, ease: 'sine.inOut' }, 0)
+        .add(() => { root.rotation.z = 0; root.position.set(0, 0, 0); });
+    }
+    const ax = vec[0] ? 'x' : 'y', sign = vec[0] || vec[1];
+    let k = 0;
+    const list = G.st.blocks.slice().sort((a, b) => sign > 0 ? (ax === 'x' ? (b.x + b.w) - (a.x + a.w) : (b.y + b.h) - (a.y + a.h)) : (ax === 'x' ? a.x - b.x : a.y - b.y));
+    for (const b of list) {
+      const was = before.get(b.id); if (!was || (was.x === b.x && was.y === b.y)) continue;
+      const m = ensureMesh(b), t = blockCenter(b), d = Math.abs(was.x - b.x) + Math.abs(was.y - b.y);
+      if (REDUCED) { m.group.position.copy(t); continue; }
+      tl.to(m.group.position, { x: t.x, z: t.z, duration: 0.12 + d * 0.05, ease: 'power3.in', onComplete: () => { squash(m.group, ax, 0.8); sfx.thock(1 + Math.random() * 0.3); } }, 0.32 + k * 0.05);
+      k++;
+    }
+  }
+
+  function doUndo() {
+    if (G.busy || G.won) return;
+    if (!G.undo.length) { toast('Geri alınacak hamle yok.'); sfx.deny(); return; }
+    if (G.boost.undo <= 0) { toast('Geri alma hakkın bitti. Bölümü baştan başlatabilirsin.'); sfx.deny(); return; }
+    G.boost.undo--; G.boostersUsed++;
+    const snap = G.undo.pop();
+    G.st.blocks = E.cloneBlocks(snap.blocks); G.queue = snap.queue.slice(); G.nextId = snap.nextId; G.moves = snap.moves;
+    G.mode = 'idle'; G.selected = false;
+    closeFail();
+    syncAll(true); renderQueue(); updateHUD(); sfx.undo();
+  }
+
+  function afterAction() {
+    updateHUD();
+    if (G.won) return;
+    const full = E.filledCount(G.st) === G.st.W * G.st.H;
+    if (full && G.queue.length === 0) { winSequence(); return; }
+    if (!E.anyActionPossible(G.st, G.queue)) {
+      setTimeout(() => { if (!G.won && !G.busy && !E.anyActionPossible(G.st, G.queue)) openFail(full); }, 420);
+    }
+  }
+
+  /* ======================================================================
+     INPUT — blocks on the board
+     ====================================================================== */
+  let drag = null;
+  function startBlockDrag(b, e, gp) {
+    if (b.fixed) { wiggle(b.id); sfx.deny(); toast('Sabit bölme: bavulun iç dikişi, yerinden oynamaz.'); return; }
+    if (b.capped) { wiggle(b.id); sfx.deny(); toast('Kapağı takılan blok kilitlendi.'); return; }
+    const m = meshes.get(b.id); if (!m) return;
+    gsap.killTweensOf(m.group.position); gsap.killTweensOf(m.group.scale);
+    m.group.position.copy(blockCenter(b)); m.group.scale.set(1, 1, 1);
+    drag = { id: b.id, pid: e.pointerId, sx: gp.gx, sy: gp.gy, ox: b.x, oy: b.y, fx: b.x, fy: b.y, axis: null, done: false, atLimit: false, occ: E.occ(G.st, b.id), moved: false };
+    gsap.to(m.group.position, { y: 0.07, duration: 0.1 });
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    canvas.classList.add('grabbing');
+    sfx.pick();
+  }
+  function moveBlockDrag(gp) {
+    const d = drag, b = E.blockById(G.st, d.id);
+    if (!b || d.done || !gp) return;
+    const tx = d.ox + (gp.gx - d.sx), ty = d.oy + (gp.gy - d.sy);
+    const canX = E.canAxis(b, 'x'), canY = E.canAxis(b, 'y');
+    if (!d.axis) {
+      const mx = Math.abs(tx - d.fx), my = Math.abs(ty - d.fy);
+      if (Math.max(mx, my) < 0.14) return;
+      let ax = mx >= my ? 'x' : 'y';
+      if (ax === 'x' && !canX) ax = canY ? 'y' : null;
+      if (ax === 'y' && !canY) ax = canX ? 'x' : null;
+      if (!ax) return;
+      d.axis = ax;
+    }
+    const other = d.axis === 'x' ? 'y' : 'x';
+    const curA = d.axis === 'x' ? d.fx : d.fy, nearA = Math.round(curA);
+    const perp = other === 'x' ? tx - d.fx : ty - d.fy, par = d.axis === 'x' ? tx - d.fx : ty - d.fy;
+    if (E.canAxis(b, other) && Math.abs(curA - nearA) < 0.26 && Math.abs(perp) > 0.4 && Math.abs(perp) > Math.abs(par) * 0.85) {
+      const probe = Object.assign({}, b, { x: d.axis === 'x' ? nearA : Math.round(d.fx), y: d.axis === 'y' ? nearA : Math.round(d.fy) });
+      const r = E.slideRange(G.st, probe, other, d.occ), curO = other === 'x' ? probe.x : probe.y;
+      if ((perp < 0 && r.min < curO) || (perp > 0 && r.max > curO)) {
+        if (d.axis === 'x') d.fx = nearA; else d.fy = nearA;
+        d.axis = other;
+      }
+    }
+    const probe = Object.assign({}, b, { x: d.axis === 'x' ? Math.round(d.fx) : d.fx, y: d.axis === 'y' ? Math.round(d.fy) : d.fy });
+    const r = E.slideRange(G.st, probe, d.axis, d.occ);
+    const want = d.axis === 'x' ? tx : ty;
+    const v = Math.min(r.max, Math.max(r.min, want)), over = want - v;
+    if (d.axis === 'x') d.fx = v; else d.fy = v;
+    if (Math.round(d.fx) !== d.ox || Math.round(d.fy) !== d.oy) d.moved = true;
+
+    const atLimit = Math.abs(over) > 0.02 && (v === r.max || v === r.min);
+    if (atLimit && !d.atLimit) { sfx.bump(); haptic(6); }
+    d.atLimit = atLimit;
+
+    if (b.soft && !b.compressed && b.softAxis === d.axis && Math.abs(over) > 0.62) {
+      const dir = over > 0 ? 1 : -1;
+      if (commitCompress(b, Math.round(d.fx), Math.round(d.fy), dir)) { d.done = true; d.compressed = true; afterAction(); return; }
+    }
+    const m = meshes.get(b.id), p = localOf(d.fx + b.w / 2, d.fy + b.h / 2);
+    m.group.position.x = p.x; m.group.position.z = p.z;
+    if (!REDUCED) {
+      const s = Math.min(Math.abs(over), 0.7), k = b.soft ? 0.36 : 0.09;
+      const a = 1 - k * s, q = 1 + k * s * 0.55;
+      m.group.scale.set(d.axis === 'x' ? a : q, 1 - k * s * 0.3, d.axis === 'y' ? a : q);
+    }
+  }
+  function endBlockDrag() {
+    const d = drag; drag = null;
+    canvas.classList.remove('grabbing');
+    const b = E.blockById(G.st, d.id), m = b && meshes.get(b.id);
+    if (!b || !m) return;
+    if (d.done) return;
+    const nx = Math.round(d.fx), ny = Math.round(d.fy);
+    const changed = nx !== b.x || ny !== b.y;
+    if (changed) { pushUndo(); b.x = nx; b.y = ny; G.moves++; sfx.click(); haptic(6); }
+    const t = blockCenter(b);
+    gsap.to(m.group.position, { x: t.x, z: t.z, y: 0, duration: 0.18, ease: 'back.out(2.2)' });
+    gsap.to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.45, ease: 'elastic.out(1,0.45)' });
+    if (changed) afterAction();
+    else if (!d.axis) {
+      const head = G.queue[0];
+      if (head && head.type === 'cap' && head.baseId === b.id) placeCap();
+    }
+  }
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('pointerdown', e => {
+    sfx.unlock();
+    if (G.won || G.busy || drag || qdrag) return;
+    const gp = pointerGrid(e), head = G.queue[0], b = pickBlock(e);
+    if (G.mode === 'vacuum') {
+      if (b) tryVacuum(b); else { G.mode = 'idle'; updateHUD(); toast('Vakum iptal edildi.'); }
+      return;
+    }
+    if (head && head.type === 'cap' && b && b.id === head.baseId) { placeCap(); return; }
+    if (b) { startBlockDrag(b, e, gp); return; }
+    const gh = pickGate(e);
+    if (gh) {
+      if (head && head.type === 'block') { tryEnterAt(gh.gi, gh.along); return; }
+      if (head && head.type === 'sock') { toast('Joker çorap kapıdan girmez: boş bir kareye dokun.'); return; }
+      if (head && head.type === 'cap') { toast('Kapak, pimli bloğun üstüne oturur: o bloğa dokun.'); return; }
+    }
+    if (head && head.type === 'sock' && gp) { placeSock(Math.floor(gp.gx), Math.floor(gp.gy)); return; }
+    if (head && head.type === 'block' && gp && gp.gx >= 0 && gp.gy >= 0 && gp.gx < G.st.W && gp.gy < G.st.H) toast('Sıradaki eşya bir kapıdan girer: parlayan oklu kapılara dokun.');
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (drag && e.pointerId === drag.pid) { moveBlockDrag(pointerGrid(e)); return; }
+    if (e.pointerType === 'mouse' && !qdrag && !G.busy && !G.won) hoverPreview(e);
+  });
+  const endCanvas = e => { if (drag && e.pointerId === drag.pid) { try { canvas.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ } endBlockDrag(); } };
+  canvas.addEventListener('pointerup', endCanvas);
+  canvas.addEventListener('pointercancel', endCanvas);
+  canvas.addEventListener('pointerleave', () => { if (!qdrag && !drag) { hideGhost(); canvas.classList.remove('can-grab', 'can-tap'); } });
+
+  /* ---------- ghost preview ---------- */
+  let ghost = null;
+  function showGhost(item, gx, gy, snapped, lift) {
+    const key = item.type + '|' + item.w + 'x' + item.h;
+    if (!ghost || ghost.key !== key) {
+      if (ghost) root.remove(ghost.group);
+      const grp = new THREE.Group(), hgt = item.type === 'cap' ? H_CAP : item.type === 'sock' ? H_SOCK : H_HARD;
+      const body = new THREE.Mesh(roundedBox(item.w - GAP, hgt, item.h - GAP, item.type === 'sock' ? 0.2 : 0.1, 2), M.ghost.clone());
+      const mark = new THREE.Mesh(planeGeo(item.w - 0.06, item.h - 0.06), new THREE.MeshBasicMaterial({ map: markTex(item.w, item.h), transparent: true, depthWrite: false }));
+      mark.rotation.x = -Math.PI / 2; mark.position.y = 0.02;
+      grp.add(body); grp.add(mark); root.add(grp);
+      ghost = { group: grp, key, body, mark };
+    }
+    const col = item.type === 'sock' ? '#FFF3D6' : item.type === 'cap' ? lighten(plasticHex(item.color), 0.38) : item.soft ? FABRIC[item.color % FABRIC.length] : plasticHex(item.color);
+    ghost.body.material.color.set(col).convertSRGBToLinear();
+    ghost.body.material.opacity = snapped ? 0.55 : 0.32;
+    ghost.mark.visible = !!snapped;
+    ghost.mark.position.y = 0.02 - (lift || 0);
+    const p = localOf(gx + item.w / 2, gy + item.h / 2);
+    ghost.group.position.set(p.x, lift || 0, p.z);
+    ghost.group.visible = true;
+  }
+  function hideGhost() { if (ghost) ghost.group.visible = false; }
+  function hoverPreview(e) {
+    const head = G.queue[0], b = pickBlock(e);
+    canvas.classList.toggle('can-grab', !!b && !b.fixed && !b.capped && G.mode === 'idle');
+    if (!head || G.mode !== 'idle') { hideGhost(); canvas.classList.toggle('can-tap', G.mode === 'vacuum' && !!b); return; }
+    if (b) { hideGhost(); canvas.classList.toggle('can-tap', head.type === 'cap' && b.id === head.baseId); return; }
+    if (head.type === 'block') {
+      const gh = pickGate(e);
+      canvas.classList.toggle('can-tap', !!gh);
+      if (gh) { const opt = bestOption(head, G.st.gates[gh.gi], gh.along); if (opt) { showGhost(head, opt.ex, opt.ey, true); return; } }
+      hideGhost(); return;
+    }
+    if (head.type === 'sock') {
+      const gp = pointerGrid(e);
+      if (gp) { const cx = Math.floor(gp.gx), cy = Math.floor(gp.gy); if (cx >= 0 && cy >= 0 && cx < G.st.W && cy < G.st.H && !E.occ(G.st)[cy * G.st.W + cx]) { canvas.classList.add('can-tap'); showGhost(head, cx, cy, true, 0.25); return; } }
+      canvas.classList.remove('can-tap');
+    }
+    hideGhost();
+  }
+
+  /* ======================================================================
+     INPUT — the conveyor tray (tap to select, drag onto a gate)
+     ====================================================================== */
+  let qdrag = null;
+  function onTrayDown(e) {
+    sfx.unlock();
+    if (G.busy || G.won || drag) return;
+    if (!G.queue[0]) return;
+    e.preventDefault();
+    qdrag = { pid: e.pointerId, sx: e.clientX, sy: e.clientY, active: false, snap: null, el: e.currentTarget };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  }
+  function nearestEntry(item, gp) {
+    let best = null, bd = 1.9;
+    G.st.gates.forEach((gate, gi) => {
+      const ax = E.sideAxis(gate.side), cross = ax === 'x' ? item.h : item.w;
+      for (const o of E.entryOptions(G.st, item, gate)) {
+        const mid = o.offset + cross / 2;
+        const mx = gate.side === 'left' ? -0.4 : gate.side === 'right' ? G.st.W + 0.4 : mid;
+        const my = gate.side === 'top' ? -0.4 : gate.side === 'bottom' ? G.st.H + 0.4 : mid;
+        const dd = Math.hypot(gp.gx - mx, gp.gy - my);
+        if (dd < bd) { bd = dd; best = { gi, opt: o }; }
+      }
+    });
+    return best;
+  }
+  function updateQueueDrag(e) {
+    const item = G.queue[0], gp = pointerGrid(e);
+    if (!item || !gp) { hideGhost(); return; }
+    qdrag.snap = null;
+    if (item.type === 'block') {
+      const n = nearestEntry(item, gp);
+      if (n) { qdrag.snap = n; showGhost(item, n.opt.ex, n.opt.ey, true); return; }
+      showGhost(item, gp.gx - item.w / 2, gp.gy - item.h / 2, false, 0.45);
+    } else if (item.type === 'sock') {
+      const cx = Math.floor(gp.gx), cy = Math.floor(gp.gy);
+      if (cx >= 0 && cy >= 0 && cx < G.st.W && cy < G.st.H && !E.occ(G.st)[cy * G.st.W + cx]) { qdrag.snap = { cx, cy }; showGhost(item, cx, cy, true, 0.25); }
+      else showGhost(item, gp.gx - 0.5, gp.gy - 0.5, false, 0.6);
+    } else if (item.type === 'cap') {
+      const b = E.blockById(G.st, item.baseId);
+      if (b && gp.gx >= b.x - 0.6 && gp.gx <= b.x + b.w + 0.6 && gp.gy >= b.y - 0.6 && gp.gy <= b.y + b.h + 0.6) { qdrag.snap = { cap: true }; showGhost(item, b.x, b.y, true, heightOf(b)); }
+      else showGhost(item, gp.gx - item.w / 2, gp.gy - item.h / 2, false, 0.9);
+    }
+  }
+  window.addEventListener('pointermove', e => {
+    if (!qdrag || e.pointerId !== qdrag.pid) return;
+    if (!qdrag.active && Math.hypot(e.clientX - qdrag.sx, e.clientY - qdrag.sy) > 9) {
+      qdrag.active = true; G.selected = false;
+      if (qdrag.el) qdrag.el.classList.add('dragging');
+      sfx.pick();
+    }
+    if (qdrag.active) updateQueueDrag(e);
+  });
+  function endQueueDrag(e, cancelled) {
+    if (!qdrag || e.pointerId !== qdrag.pid) return;
+    const q = qdrag; qdrag = null;
+    if (q.el) q.el.classList.remove('dragging');
+    const item = G.queue[0];
+    if (!item) { hideGhost(); return; }
+    if (!q.active) { if (!cancelled) onTrayTap(item); return; }
+    hideGhost();
+    if (cancelled || !q.snap) { renderQueue(); return; }
+    if (item.type === 'block') doEnter(item, q.snap.gi, q.snap.opt);
+    else if (item.type === 'sock') placeSock(q.snap.cx, q.snap.cy);
+    else if (item.type === 'cap') placeCap();
+  }
+  window.addEventListener('pointerup', e => endQueueDrag(e, false));
+  window.addEventListener('pointercancel', e => endQueueDrag(e, true));
+  function onTrayTap(item) {
+    if (item.type === 'cap') { placeCap(); return; }
+    if (item.type === 'sock') { toast('Joker çorap: bavulda boş bir kareye dokun.'); sfx.pop(); return; }
+    G.selected = !G.selected;
+    sfx.pop();
+    if (G.selected) {
+      const any = gateViews.some(v => v.valid);
+      toast(any ? 'Şimdi parlayan bir kapıya dokun.' : 'Hiçbir kapı uygun değil: içerideki blokları kaydır.');
+      gateViews.forEach(v => { if (v.valid) v.flash = 1; });
+    }
+    renderQueue();
+  }
+
+  /* ======================================================================
+     BOOSTER + MENU BUTTONS
+     ====================================================================== */
+  el.bUndo.addEventListener('click', () => { sfx.unlock(); doUndo(); });
+  el.bVac.addEventListener('click', () => {
+    sfx.unlock();
+    if (G.busy || G.won) return;
+    if (G.mode === 'vacuum') { G.mode = 'idle'; updateHUD(); toast('Vakum iptal edildi.'); return; }
+    if (G.boost.vac <= 0) { toast('Vakum poşetin kalmadı.'); sfx.deny(); return; }
+    if (!G.st.blocks.some(b => !b.fixed && !b.sock && !b.base && !b.capped && b.w * b.h > 1)) { toast('İçeride vakumlanacak blok yok.'); sfx.deny(); return; }
+    G.mode = 'vacuum'; G.selected = false; closeFail(); updateHUD(); renderQueue();
+    toast('Vakum hazır: küçültmek istediğin bloğa dokun.', 2600); sfx.pop();
+  });
+  el.bShake.addEventListener('click', () => {
+    sfx.unlock();
+    if (G.busy || G.won) return;
+    if (G.boost.shake <= 0) { toast('Silkeleme hakkın kalmadı.'); sfx.deny(); return; }
+    G.mode = 'idle'; closeFail(); updateHUD();
+    el.shakePick.hidden = false; sfx.pop();
+    const first = el.shakePick.querySelector('button[data-dir]'); if (first) first.focus({ preventScroll: true });
+  });
+  el.shakePick.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) { if (e.target === el.shakePick) el.shakePick.hidden = true; return; }
+    if (btn.id === 'shakeCancel') { el.shakePick.hidden = true; return; }
+    if (btn.dataset.dir) doShake(btn.dataset.dir);
+  });
+  $('#btnRestart').addEventListener('click', () => { sfx.unlock(); if (G.won && G.busy) return; loadLevel(G.idx); toast('Bavul boşaltıldı, baştan başla.'); });
+  el.btnSound.addEventListener('click', () => { sfx.unlock(); sfx.setMuted(!sfx.muted); setSoundIcon(); });
+  $('#btnHelp').addEventListener('click', () => { el.helpOv.hidden = false; $('#btnStart').focus({ preventScroll: true }); });
+  $('#btnStart').addEventListener('click', () => { sfx.unlock(); el.helpOv.hidden = true; try { localStorage.setItem('pj-seen-help', '1'); } catch (e) { /* ignore */ } toast(G.level.cfg.intro || 'İyi paketlemeler!'); });
+  $('#stamp').addEventListener('click', () => {
+    const lv = G.level, n = lv.queue.filter(q => q.type === 'block').length;
+    toast(`Tersine üretildi: ${lv.W}×${lv.H} bavul %100 döşendi, ${n} eşya kapılardan çıkarıldı, ${lv.solution.length} adımlık geri sarım kurallarla yeniden oynanıp doğrulandı.`, 5200);
+  });
+  $('#btnNext').addEventListener('click', () => { sfx.unlock(); el.winOv.hidden = true; loadLevel(G.idx + 1); });
+  $('#btnReplay').addEventListener('click', () => { sfx.unlock(); el.winOv.hidden = true; loadLevel(G.idx); });
+  $('#fUndo').addEventListener('click', () => { doUndo(); });
+  $('#fRestart').addEventListener('click', () => { closeFail(); loadLevel(G.idx); });
+  $('#fClose').addEventListener('click', () => { closeFail(); toast('Vakum ya da Silkele ile yer açmayı dene.'); });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { el.shakePick.hidden = true; if (G.mode === 'vacuum') { G.mode = 'idle'; updateHUD(); } }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doUndo(); }
+  });
+
+  function openFail(full) {
+    if (G.failOpen) return;
+    G.failOpen = true;
+    const head = G.queue[0];
+    let txt = 'Sıradaki eşya hiçbir kapıdan giremiyor ve içeride kıpırdayabilen blok kalmadı.';
+    if (full) txt = 'Bavul doldu ama kuyrukta eşya kaldı. Yumuşak eşyaları sıkıştırmak ya da Vakum kullanmak yer açar.';
+    else if (head && head.type === 'cap') txt = 'Kapak sırada ama pimli blok yerine oturmuyor ve hiçbir blok kıpırdayamıyor.';
+    $('#failText').textContent = txt;
+    $('#fUndo').textContent = G.boost.undo > 0 && G.undo.length ? `Son hamleyi geri al (${G.boost.undo})` : 'Geri alma hakkı yok';
+    $('#fUndo').disabled = !(G.boost.undo > 0 && G.undo.length);
+    el.failOv.hidden = false; sfx.fail(); haptic([30, 60, 30]);
+  }
+  function closeFail() { el.failOv.hidden = true; G.failOpen = false; }
+
+  /* ======================================================================
+     WIN SEQUENCE — lid swings shut, zipper runs, contents press, confetti
+     ====================================================================== */
+  function buildLid() {
+    const w = G.st.W, h = G.st.H, T = WALL_T, OW = w + 2 * T + 0.16, OH = h + 2 * T + 0.16, skirt = 0.62;
+    const mat = new THREE.MeshPhysicalMaterial({ color: lin('#7FB8FF'), roughness: 0.12, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.1, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.2 });
+    const rim = new THREE.MeshPhysicalMaterial({ color: lin('#2A3A66'), roughness: 0.4, clearcoat: 0.4, transparent: true, opacity: 0 });
+    const pivot = new THREE.Group(); pivot.position.set(0, WALL_H, -OH / 2); suit.add(pivot);
+    const lid = new THREE.Group(); pivot.add(lid);
+    const plate = new THREE.Mesh(roundedBox(OW, 0.12, OH, 0.22, 3), mat); plate.position.set(0, skirt, OH / 2); plate.renderOrder = 5; lid.add(plate);
+    const sk = 0.12;
+    for (const [sw, sd, x, z] of [[OW, sk, 0, sk / 2], [OW, sk, 0, OH - sk / 2], [sk, OH, -OW / 2 + sk / 2, OH / 2], [sk, OH, OW / 2 - sk / 2, OH / 2]]) {
+      const s = new THREE.Mesh(roundedBox(sw, skirt, sd, 0.05, 2), rim); s.position.set(x, 0, z); lid.add(s);
+    }
+    for (const k of [-1, 0, 1]) {
+      const rib = new THREE.Mesh(roundedBox(0.16, 0.05, OH - 0.8, 0.025, 2), rim); rib.position.set(k * OW * 0.26, skirt + 0.12, OH / 2); lid.add(rib);
+    }
+    const handle = new THREE.Mesh(roundedBox(1.4, 0.12, 0.26, 0.06, 2), rim); handle.position.set(0, skirt + 0.12, OH - 0.45); lid.add(handle);
+    return { pivot, mats: [mat, rim], OW, OH };
+  }
+  function buildZipper(OW, OH) {
+    const y = WALL_H + 0.01, x = OW / 2 + 0.03, z = OH / 2 + 0.03, r = 0.3;
+    const V = (a, b) => new THREE.Vector3(a, y, b);
+    const path = new THREE.CurvePath();
+    path.add(new THREE.LineCurve3(V(-x + r, -z), V(x - r, -z)));
+    path.add(new THREE.QuadraticBezierCurve3(V(x - r, -z), V(x, -z), V(x, -z + r)));
+    path.add(new THREE.LineCurve3(V(x, -z + r), V(x, z - r)));
+    path.add(new THREE.QuadraticBezierCurve3(V(x, z - r), V(x, z), V(x - r, z)));
+    path.add(new THREE.LineCurve3(V(x - r, z), V(-x + r, z)));
+    path.add(new THREE.QuadraticBezierCurve3(V(-x + r, z), V(-x, z), V(-x, z - r)));
+    path.add(new THREE.LineCurve3(V(-x, z - r), V(-x, -z + r)));
+    path.add(new THREE.QuadraticBezierCurve3(V(-x, -z + r), V(-x, -z), V(-x + r, -z)));
+    const SEG = 320, RAD = 6;
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(path, SEG, 0.045, RAD, false), M.zip);
+    tube.geometry.setDrawRange(0, 0); suit.add(tube);
+    const pull = new THREE.Group();
+    const tab = new THREE.Mesh(roundedBox(0.2, 0.07, 0.34, 0.03, 2), M.metal); tab.castShadow = true; pull.add(tab);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 8, 18), M.metal); ring.rotation.x = Math.PI / 2; ring.position.set(0, 0.06, 0.2); pull.add(ring);
+    pull.visible = false; suit.add(pull);
+    return { tube, pull, path, SEG, RAD };
+  }
+  function winSequence() {
+    if (G.won) return;
+    G.won = true; G.mode = 'idle'; G.selected = false; hideGhost(); closeFail(); el.shakePick.hidden = true;
+    updateHUD();
+    lock();
+    const lid = buildLid(), zip = buildZipper(lid.OW, lid.OH);
+    lid.pivot.rotation.x = -1.95;
+    const groups = Array.from(meshes.values()).map(m => m.group);
+    const tl = gsap.timeline({ onComplete: () => { unlock(); setTimeout(showWin, REDUCED ? 0 : 1000); } });
+    tl.add(() => { sfx.win(); toast('PERFECT PACK! Bavul kapanıyor…', 1600); }, 0.1)
+      .to(lid.mats, { opacity: (i) => i === 0 ? 0.5 : 0.95, duration: 0.3 }, 0.2)
+      .to(lid.pivot.rotation, { x: 0, duration: REDUCED ? 0.01 : 0.62, ease: 'power2.in' }, 0.3)
+      .add(() => {
+        sfx.thump(); haptic(30);
+        groups.forEach(g => { gsap.killTweensOf(g.scale); g.scale.set(1, 1, 1); });
+        if (!REDUCED) {
+          gsap.to(groups.map(g => g.scale), { y: 0.86, duration: 0.1, ease: 'power2.out', yoyo: true, repeat: 1 });
+          gsap.fromTo(root.scale, { y: 0.94, x: 1.03, z: 1.03 }, { y: 1, x: 1, z: 1, duration: 0.6, ease: 'elastic.out(1,0.4)' });
+          puff(0, -lid.OH / 2, 8, lid.OW * 0.8, 0.5);
+        }
+      })
+      .add(() => { zip.pull.visible = true; sfx.zip(0.95); })
+      .to({ t: 0 }, {
+        t: 1, duration: REDUCED ? 0.01 : 0.95, ease: 'power1.inOut',
+        onUpdate: function () {
+          const t = Math.min(0.9999, this.targets()[0].t);
+          zip.tube.geometry.setDrawRange(0, Math.floor(t * zip.SEG) * zip.RAD * 6);
+          const p = zip.path.getPointAt(t), tg = zip.path.getTangentAt(t);
+          zip.pull.position.set(p.x, p.y + 0.05, p.z); zip.pull.rotation.y = Math.atan2(tg.x, tg.z);
+        }
+      })
+      .add(() => { zip.tube.geometry.setDrawRange(0, Infinity); haptic(15); })
+      .to(groups.map(g => g.scale), { y: 0.93, duration: 0.25, ease: 'power2.out' })
+      .add(() => { confetti(); }, '-=0.1');
+  }
+  function showWin() {
+    $('#wMoves').textContent = G.moves;
+    $('#wItems').textContent = G.level.queue.length;
+    $('#wBoost').textContent = G.boostersUsed;
+    el.winOv.hidden = false;
+    $('#btnNext').focus({ preventScroll: true });
+    try { localStorage.setItem('pj-level', String(G.idx + 1)); } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- confetti (2D canvas) ---------- */
+  const fx = $('#fx'), fctx = fx.getContext('2d');
+  let confRaf = 0;
+  function confetti() {
+    if (REDUCED) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = app.clientWidth, h = app.clientHeight;
+    fx.width = w * dpr; fx.height = h * dpr; fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cols = PALETTE.concat(['#FFFFFF', '#FFE08A']), parts = [];
+    for (let i = 0; i < 190; i++) {
+      const left = i % 2 === 0, ang = (left ? -1 : -2.14) + (Math.random() - 0.5) * 0.7, sp = 9 + Math.random() * 9;
+      parts.push({ x: left ? -10 : w + 10, y: h * 0.62, vx: Math.cos(ang) * sp * (left ? 1 : 1), vy: Math.sin(ang) * sp, r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.4,
+        w: 6 + Math.random() * 7, h: 4 + Math.random() * 5, c: cols[i % cols.length], wob: Math.random() * 6 });
+    }
+    const t0 = performance.now();
+    cancelAnimationFrame(confRaf);
+    (function frame(now) {
+      const t = (now - t0) / 1000;
+      fctx.clearRect(0, 0, w, h);
+      for (const p of parts) {
+        p.vy += 0.32; p.vx *= 0.985; p.vy *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.wob += 0.15;
+        fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.r); fctx.scale(1, Math.abs(Math.cos(p.wob)) * 0.8 + 0.2);
+        fctx.fillStyle = p.c; fctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); fctx.restore();
+      }
+      if (t < 4.2) confRaf = requestAnimationFrame(frame); else fctx.clearRect(0, 0, w, h);
+    })(t0);
+  }
+
+  /* ======================================================================
+     LEVEL LIFECYCLE
+     ====================================================================== */
+  function loadLevel(i) {
+    gsap.globalTimeline.clear();
+    cancelAnimationFrame(confRaf); fctx.clearRect(0, 0, fx.width, fx.height);
+    const lv = E.buildLevel(i);
+    if (!lv) { toast('Bu bavul üretilemedi, sıradakine geçiliyor.'); if (i < 200) loadLevel(i + 1); return; }
+    G.idx = i; G.level = lv;
+    G.st = { W: lv.W, H: lv.H, gates: lv.gates, blocks: E.cloneBlocks(lv.initial) };
+    G.queue = lv.queue.slice(); G.undo = []; G.boost = Object.assign({}, BOOSTERS);
+    G.moves = 0; G.boostersUsed = 0; G.nextId = 5000; G.mode = 'idle'; G.selected = false; G.busy = 0; G.won = false;
+    lastHeadId = null; closeFail(); el.winOv.hidden = true; el.shakePick.hidden = true; hideGhost();
+    root.rotation.set(0, 0, 0); root.position.set(0, 0, 0); root.scale.set(1, 1, 1);
+    clearMeshes();
+    if (ghost) { root.remove(ghost.group); ghost = null; }
+    buildSuitcase();
+    syncAll(false);
+    $('#lvlNum').textContent = String(i + 1).padStart(2, '0');
+    $('#lvlName').textContent = lv.cfg.name;
+    $('#lvlCode').textContent = lv.cfg.code;
+    $('#lvlSize').textContent = lv.W + '×' + lv.H;
+    renderQueue(); updateHUD(); fitCamera();
+    if (!REDUCED) {
+      lock();
+      let k = 0;
+      const tl = gsap.timeline({ onComplete: unlock });
+      for (const m of meshes.values()) {
+        const y0 = m.group.position.y;
+        m.group.position.y = 3.4;
+        tl.to(m.group.position, { y: y0, duration: 0.42, ease: 'bounce.out' }, 0.1 + k * 0.08);
+        k++;
+      }
+      suit.scale.set(0.92, 0.92, 0.92);
+      tl.to(suit.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: 'back.out(2)' }, 0);
+      if (!k) tl.to({}, { duration: 0.1 });
+    }
+    try { localStorage.setItem('pj-level', String(i)); } catch (e) { /* ignore */ }
+  }
+
+  /* ======================================================================
+     RENDER LOOP
+     ====================================================================== */
+  let last = performance.now();
+  function tick(now) {
+    requestAnimationFrame(tick);
+    const dt = Math.min(0.05, (now - last) / 1000), t = now / 1000; last = now;
+    for (const v of gateViews) {
+      v.flash = Math.max(0, v.flash - dt * 2.2);
+      if (v.valid) {
+        v.tex.offset.x -= dt * (G.selected ? 1.6 : 0.85);
+        v.chevMat.opacity = 0.95;
+        v.mat.emissiveIntensity = (G.selected ? 0.22 : 0.1) + (G.selected ? 0.14 : 0.06) * Math.sin(t * 5) + v.flash * 0.5;
+      } else {
+        v.chevMat.opacity = 0.28 + v.flash * 0.5;
+        v.mat.emissiveIntensity = v.flash * 0.4;
+      }
+    }
+    if (halo && halo.visible) halo.material.opacity = 0.4 + 0.28 * Math.sin(t * 5);
+    if (emptyOverlay && emptyOverlay.visible) emptyOverlay.material.opacity = 0.55 + 0.3 * Math.sin(t * 4);
+    renderer.render(scene, camera);
+  }
+
+  /* ---------- test hook: plays the generator's reference solution ---------- */
+  window.__pj.pointerGrid = (x, y) => pointerGrid({ clientX: x, clientY: y });
+  window.__pj.refresh = () => { syncAll(false); renderQueue(); afterAction(); };
+  window.__pj.autoplay = function (speed) {
+    speed = speed || 1;
+    const sol = G.level.solution.slice();
+    loadLevel(G.idx);
+    let i = 0;
+    const step = () => {
+      if (G.busy) { setTimeout(step, 40); return; }
+      if (i >= sol.length) return;
+      const a = sol[i++];
+      if (a.t === 'enter') { const item = G.queue[0]; const opt = E.entryOptions(G.st, item, G.st.gates[a.gi]).find(o => o.offset === a.offset); doEnter(item, a.gi, opt); }
+      else if (a.t === 'slide') { const b = E.blockById(G.st, a.id); commitSlide(b, a.to.x, a.to.y, true); afterAction(); }
+      else if (a.t === 'compress') { const b = E.blockById(G.st, a.id); commitCompress(b, b.x, b.y, a.dir); afterAction(); }
+      else if (a.t === 'cap') placeCap();
+      setTimeout(step, 260 / speed);
+    };
+    setTimeout(step, 1200);
+  };
+
+  /* ---------- boot ---------- */
+  function start(data) {
+    setSoundIcon();
+    let idx = 0;
+    if (data && typeof data.idx === 'number') idx = data.idx;
+    else { try { idx = parseInt(localStorage.getItem('pj-level') || '0', 10) || 0; } catch (e) { idx = 0; } }
+    loadLevel(Math.max(0, idx));
+    let seen = false; try { seen = localStorage.getItem('pj-seen-help') === '1'; } catch (e) { /* ignore */ }
+    if (!seen) el.helpOv.hidden = false;
+    const ro = new ResizeObserver(() => fitCamera()); ro.observe(app); ro.observe(el.hudBottom); ro.observe(el.hudTop);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitCamera());
+    requestAnimationFrame(tick);
+  }
+  const hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) { try { hot.snapshot(() => ({ idx: G.idx })); } catch (e) { /* ignore */ } }
+  if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+})();
+</script>
+</body>
+</html>
