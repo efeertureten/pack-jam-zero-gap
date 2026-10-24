@@ -1,0 +1,316 @@
+<title>Pack Jam: Zero Gap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Mono:wght@500&family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Layout: full-bleed 3D stage (the suitcase) with two HUD bands pinned over it —
+   a luggage tag + fill gauge on top, a security-tray conveyor + boosters below.
+   Single committed look: airport-terminal teal, navy suitcase, candy plastic. */
+:root {
+  --sky-1: #E6F6F5; --sky-2: #B6DDE4; --sky-3: #82B6C6;
+  --ink: #18213D; --ink-2: #4B5A7C; --paper: #FFFFFF;
+  --tag: #F1D7A2; --tag-deep: #C79A4E; --tag-ink: #4A3412;
+  --accent: #FF6A3D; --accent-deep: #C94A22;
+  --ok: #1FB57A; --ok-deep: #158A5C;
+  --belt: #232836; --belt-2: #2D3343; --tray-1: #F6F8FB; --tray-2: #D6DEE8; --tray-edge: #8E9DB0;
+  --scrim: rgba(24, 33, 61, .52);
+  --f-display: "Bungee", "Arial Black", Impact, system-ui, sans-serif;
+  --f-ui: "Fredoka", ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --hud-max: 560px;
+  color-scheme: light;
+}
+html { box-sizing: border-box; height: 100%; background: var(--sky-2); }
+*, *::before, *::after { box-sizing: inherit; }
+body { height: 100%; margin: 0; overflow: hidden; background: var(--sky-2); color: var(--ink); font-family: var(--f-ui);
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+#app { position: relative; width: 100%; height: 100%; overflow: hidden;
+  background: radial-gradient(120% 75% at 50% 46%, var(--sky-1) 0%, var(--sky-2) 52%, var(--sky-3) 100%); }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+#gl.can-grab { cursor: grab; } #gl.grabbing { cursor: grabbing; } #gl.can-tap { cursor: pointer; }
+#fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+
+.hud { position: absolute; left: 0; right: 0; z-index: 10; pointer-events: none;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.hud-inner { max-width: var(--hud-max); margin: 0 auto; pointer-events: none; }
+.hud-inner > * { pointer-events: auto; }
+
+/* ---------- top band ---------- */
+#hudTop { top: 0; padding-block: 12px 0; }
+#hudTop .hud-inner { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tag-wrap { flex: 0 1 auto; filter: drop-shadow(0 3px 0 var(--tag-deep)) drop-shadow(0 10px 14px rgba(24, 33, 61, .16)); min-width: 0; }
+.tag { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0;
+  background: var(--tag); color: var(--tag-ink); padding: 7px 16px 7px 34px;
+  clip-path: polygon(16px 0, 100% 0, 100% 100%, 16px 100%, 0 calc(100% - 14px), 0 14px); border-radius: 0 12px 12px 0; }
+.tag::before { content: ""; position: absolute; left: 12px; top: 50%; width: 11px; height: 11px; margin-top: -5.5px; border-radius: 50%;
+  background: var(--sky-2); box-shadow: 0 0 0 3px #FFF3D6, inset 0 1px 2px rgba(0, 0, 0, .35); }
+.tag-num { display: grid; justify-items: center; line-height: 1; }
+.tag-k { font: 500 9px/1 var(--f-mono); letter-spacing: .16em; }
+.tag-num b { font: 400 28px/1 var(--f-display); letter-spacing: .02em; }
+.tag-meta { display: grid; gap: 3px; min-width: 0; border-left: 2px dashed rgba(74, 52, 18, .35); padding-left: 12px; }
+.tag-meta > span:first-child { font-weight: 700; font-size: 15px; line-height: 1.1; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tag-code { font: 500 11px/1 var(--f-mono); letter-spacing: .06em; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.icon-btn { width: 42px; height: 42px; border-radius: 14px; border: 0; background: var(--paper); color: var(--ink); display: grid; place-items: center;
+  box-shadow: 0 4px 0 rgba(24, 33, 61, .2); cursor: pointer; font: 700 19px/1 var(--f-ui); transition: transform .08s; }
+.icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(24, 33, 61, .2); }
+.icon-btn svg { width: 22px; height: 22px; }
+
+.fill { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+.fill-track { position: relative; height: 18px; border-radius: 10px; background: rgba(24, 33, 61, .18);
+  box-shadow: inset 0 2px 3px rgba(24, 33, 61, .25); overflow: hidden; }
+.fill-track::after { content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(255, 255, 255, .45) calc(10% - 2px) 10%); pointer-events: none; }
+.fill-bar { height: 100%; width: 0%; border-radius: 10px; background-color: var(--accent);
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .22) 0 8px, transparent 8px 16px);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15), inset 0 2px 0 rgba(255, 255, 255, .35);
+  transition: width .45s cubic-bezier(.2, .9, .3, 1.2), background-color .3s; animation: belt 1s linear infinite; }
+.fill-bar.full { background-color: var(--ok); }
+@keyframes belt { to { background-position: 22.6px 0; } }
+.fill-read { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+.fill-read b { font: 400 20px/1 var(--f-display); min-width: 3.2ch; text-align: right; }
+.fill-read span { font: 500 11px/1 var(--f-mono); color: var(--ink-2); white-space: nowrap; }
+.fill-target { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+.chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gap-chip { font: 600 13px/1 var(--f-ui); color: var(--ink); background: rgba(255, 255, 255, .78); padding: 6px 10px; border-radius: 999px;
+  box-shadow: 0 2px 0 rgba(24, 33, 61, .14); font-variant-numeric: tabular-nums; }
+.gap-chip b { font: 400 14px/1 var(--f-display); margin-left: 2px; }
+.gap-chip.tight { background: #FFE3D6; color: var(--accent-deep); }
+.gap-chip.zero { background: var(--ink); color: #fff; letter-spacing: .02em; }
+.gap-chip.zero b { color: #FFD9A8; margin: 0 2px 0 0; }
+.stamp { border: 2px solid var(--ok-deep); color: var(--ok-deep); background: rgba(255, 255, 255, .55);
+  font: 500 10px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px;
+  transform: rotate(-2deg); cursor: pointer; }
+
+/* ---------- toast ---------- */
+#toast { position: absolute; left: 50%; bottom: calc(var(--bot, 220px) + 12px); z-index: 20; transform: translate(-50%, 12px); opacity: 0;
+  width: max-content; max-width: min(92vw, 460px); text-align: center; text-wrap: balance;
+  background: var(--ink); color: #fff; font-weight: 600; font-size: 14.5px; line-height: 1.35; padding: 10px 16px; border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(24, 33, 61, .3); transition: opacity .2s, transform .25s; pointer-events: none; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- bottom band ---------- */
+#hudBottom { bottom: 0; padding-block: 0 14px; }
+#hudBottom .hud-inner { display: grid; gap: 12px; }
+.belt-wrap { background: var(--belt); border-radius: 20px; padding: 9px 10px 11px;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .35), 0 12px 26px rgba(24, 33, 61, .28); }
+.belt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 4px 7px; color: #C9D2E3;
+  font: 500 10.5px/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; }
+.belt-head #hint { color: #FFD9A8; letter-spacing: .04em; text-transform: none; font: 600 12.5px/1.2 var(--f-ui); text-align: right; min-width: 0; }
+.belt { position: relative; display: flex; align-items: flex-end; gap: 10px; min-height: 104px; padding: 8px; border-radius: 12px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--belt-2) 0 26px, #262B39 26px 29px); background-size: 29px 100%; }
+.belt.roll { animation: roll .35s ease-out; }
+@keyframes roll { from { background-position: 29px 0; } to { background-position: 0 0; } }
+.tray { position: relative; flex: 0 0 auto; width: 78px; height: 74px; border-radius: 13px; border: 0; padding: 0 0 14px;
+  background: linear-gradient(var(--tray-1), var(--tray-2)); display: grid; place-items: center;
+  box-shadow: inset 0 4px 7px rgba(0, 0, 0, .2), inset 0 0 0 2px rgba(255, 255, 255, .6), 0 4px 0 var(--tray-edge); }
+.tray.head { width: 104px; height: 90px; cursor: grab; touch-action: none; }
+.tray.head::before { content: "SIRADA"; position: absolute; top: -1px; left: 50%; transform: translate(-50%, -55%);
+  background: var(--accent); color: #fff; font: 500 9px/1 var(--f-mono); letter-spacing: .14em; padding: 4px 7px; border-radius: 6px; }
+.tray.head.selected { transform: translateY(-6px); box-shadow: inset 0 4px 7px rgba(0, 0, 0, .2), 0 0 0 3px var(--accent), 0 10px 0 var(--tray-edge); }
+.tray.head.dragging { opacity: .45; }
+.tray.enter { animation: slideIn .35s cubic-bezier(.2, .9, .3, 1.15); }
+@keyframes slideIn { from { transform: translateX(var(--from, 90px)); } to { transform: none; } }
+.tray-lbl { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font: 500 10px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; }
+.more { flex: 0 0 auto; align-self: center; min-width: 46px; height: 46px; border-radius: 23px; display: grid; place-items: center; color: #DCE3F0;
+  border: 2px dashed rgba(220, 227, 240, .45); font: 600 15px/1 var(--f-ui); }
+.empty-belt { color: #9AA6BD; font: 500 12px/1.4 var(--f-mono); align-self: center; padding: 0 8px; }
+
+.mini { position: relative; display: block; width: calc(var(--w) * var(--c)); height: calc(var(--h) * var(--c)); color: #fff;
+  border-radius: calc(var(--c) * .26); background-color: var(--col);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .22), inset 0 2px 0 rgba(255, 255, 255, .45), 0 2px 3px rgba(0, 0, 0, .25); }
+.mini svg { position: absolute; inset: 0; margin: auto; width: calc(var(--c) * 1.25); height: calc(var(--c) * 1.25); max-width: 92%; max-height: 92%; overflow: visible; }
+.mini.vert svg { transform: rotate(90deg); }
+.mini.axis svg { width: 80%; height: 80%; transform: none; }
+.mini.it-perfume, .mini.it-joker { border-radius: calc(var(--c) * .4); transform: scale(.9); }
+.mini.it-joker { color: #B98A12; }
+.mini.it-passport { border-radius: calc(var(--c) * .16); filter: saturate(.85) brightness(.92); }
+.mini.it-towel { border-radius: calc(var(--c) * .45); background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(255, 255, 255, .7) 5px 9px); }
+.mini.it-towel.vert { background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, .7) 5px 9px); }
+.mini.it-organizer { border-radius: calc(var(--c) * .4); }
+.mini.it-jewelry { background-image: radial-gradient(circle at 18% 18%, #F2C14E 0 5%, transparent 6%), radial-gradient(circle at 82% 18%, #F2C14E 0 5%, transparent 6%), radial-gradient(circle at 18% 82%, #F2C14E 0 5%, transparent 6%), radial-gradient(circle at 82% 82%, #F2C14E 0 5%, transparent 6%); }
+.mini.it-lid { color: #B98A12; background-color: rgba(214, 241, 255, .7); border: 2px solid #E8B93A; transform: perspective(120px) rotateX(26deg);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .9), 0 6px 0 -2px rgba(24, 33, 61, .2); }
+
+/* ---------- boosters ---------- */
+.boosters { display: flex; justify-content: center; gap: 18px; }
+.booster { position: relative; display: grid; justify-items: center; gap: 5px; border: 0; background: none; padding: 0; cursor: pointer; }
+.booster .orb { width: 60px; height: 58px; border-radius: 19px; display: grid; place-items: center; color: #fff; background: var(--b);
+  box-shadow: 0 5px 0 var(--bd), inset 0 3px 0 rgba(255, 255, 255, .35), inset 0 -2px 0 rgba(0, 0, 0, .12); transition: transform .08s; }
+.booster .orb svg { width: 30px; height: 30px; }
+.booster:active .orb { transform: translateY(4px); box-shadow: 0 1px 0 var(--bd), inset 0 3px 0 rgba(255, 255, 255, .35); }
+.booster .b-name { font-weight: 700; font-size: 13px; color: var(--ink); }
+.booster .badge { position: absolute; top: -7px; right: -9px; min-width: 25px; height: 25px; padding: 0 5px; border-radius: 13px;
+  background: var(--ink); color: #fff; font: 700 13px/21px var(--f-ui); text-align: center; border: 2px solid #fff; font-variant-numeric: tabular-nums; }
+.booster.armed .orb { box-shadow: 0 5px 0 var(--bd), 0 0 0 4px #fff, 0 0 0 7px var(--b); animation: armed 1s ease-in-out infinite; }
+@keyframes armed { 50% { transform: translateY(-3px); } }
+.booster[aria-disabled="true"] { opacity: .45; filter: saturate(.4); }
+
+/* ---------- shake picker ---------- */
+.shake-pick { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; background: rgba(24, 33, 61, .22); }
+.shake-pick .pad { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: auto repeat(3, 64px); gap: 8px; justify-items: center; align-items: center; }
+.shake-pick p { grid-column: 1 / -1; margin: 0 0 6px; background: var(--ink); color: #fff; padding: 9px 14px; border-radius: 12px; font-weight: 600; font-size: 15px; text-align: center; }
+.shake-pick button { width: 64px; height: 64px; border-radius: 20px; border: 0; background: #FFB020; color: var(--ink); cursor: pointer;
+  box-shadow: 0 5px 0 #C98200; display: grid; place-items: center; }
+.shake-pick button svg { width: 30px; height: 30px; }
+.shake-pick button.cancel { background: var(--paper); box-shadow: 0 5px 0 rgba(24, 33, 61, .25); font-weight: 700; font-size: 13px; }
+.shake-pick button:active { transform: translateY(4px); box-shadow: none; }
+
+/* ---------- overlays ---------- */
+.overlay { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--scrim);
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+.card { width: min(100%, 380px); background: var(--paper); border-radius: 26px; padding: 26px 22px 20px; text-align: center;
+  box-shadow: 0 8px 0 rgba(24, 33, 61, .25), 0 30px 60px rgba(24, 33, 61, .35); display: grid; gap: 12px; animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
+@keyframes pop { from { transform: scale(.8); opacity: 0; } }
+.card h2 { margin: 0; font: 400 30px/1.05 var(--f-display); text-wrap: balance; }
+.card p { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.45; text-wrap: pretty; }
+.win h2 { color: var(--accent); text-shadow: 0 3px 0 var(--ink); letter-spacing: .01em; }
+.win-stamp { justify-self: center; font: 400 22px/1 var(--f-display); color: var(--ok-deep); border: 4px solid var(--ok-deep); border-radius: 10px;
+  padding: 8px 14px 6px; transform: rotate(-6deg); letter-spacing: .06em; background: rgba(31, 181, 122, .08); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0; }
+.stats div { background: #F1F4F8; border-radius: 14px; padding: 10px 4px 8px; display: grid; gap: 4px; }
+.stats b { font: 400 22px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.stats span { font: 500 10.5px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .06em; text-transform: uppercase; }
+.fail h2 { color: var(--ink); }
+.fail .sub { font: 400 15px/1 var(--f-display); color: var(--accent); letter-spacing: .04em; }
+.btn { border: 0; border-radius: 16px; padding: 14px 18px; font-weight: 700; font-size: 16px; cursor: pointer; background: #EEF2F7; color: var(--ink);
+  box-shadow: 0 4px 0 rgba(24, 33, 61, .18); }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(24, 33, 61, .18); }
+.btn.primary { background: var(--accent); color: #fff; box-shadow: 0 5px 0 var(--accent-deep); }
+.btn.ghost { background: transparent; box-shadow: none; color: var(--ink-2); padding: 8px; }
+.help { text-align: left; gap: 14px; }
+.help h2 { text-align: center; color: var(--ink); }
+.help .goal { text-align: center; font-weight: 600; color: var(--ink); }
+.help ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; counter-reset: s; }
+.help li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; font-size: 14.5px; line-height: 1.4; color: var(--ink-2); counter-increment: s; }
+.help li::before { content: counter(s); width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--tag); color: var(--tag-ink); font: 400 14px/1 var(--f-display); }
+.help li b { color: var(--ink); }
+
+@media (max-height: 700px) {
+  .tray { height: 64px; width: 70px; } .tray.head { height: 78px; width: 92px; } .belt { min-height: 90px; }
+  .booster .orb { width: 52px; height: 50px; } .boosters { gap: 14px; } #hudBottom .hud-inner { gap: 10px; }
+  .stamp { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fill-bar { animation: none; } .booster.armed .orb { animation: none; } .card { animation: none; } .tray.enter, .belt.roll { animation: none; }
+}
+</style>
+
+<div id="app">
+  <canvas id="gl" aria-label="Bavul: blokları sürükle, kapılara dokun"></canvas>
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <header id="hudTop" class="hud">
+    <div class="hud-inner">
+      <div class="top-row">
+        <div class="tag-wrap">
+          <div class="tag">
+            <div class="tag-num"><span class="tag-k">BÖLÜM</span><b id="lvlNum">01</b></div>
+            <div class="tag-meta"><span id="lvlName">Hafta Sonu Çantası</span><span class="tag-code"><span id="lvlCode">IST-01</span> · <span id="lvlSize">6×6</span></span></div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" id="btnHelp" aria-label="Nasıl oynanır">?</button>
+          <button class="icon-btn" id="btnSound" aria-label="Sesi kapat"></button>
+          <button class="icon-btn" id="btnRestart" aria-label="Bölümü yeniden başlat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="fill" role="group" aria-label="Doluluk oranı">
+        <div class="fill-track"><div class="fill-bar" id="fillBar"></div><div class="fill-target" id="fillTarget" hidden></div></div>
+        <div class="fill-read"><b id="fillPct">0%</b><span id="fillCells">0/36</span></div>
+      </div>
+      <div class="chips">
+        <span class="gap-chip" id="gapChip">Boşluk hakkı <b>0</b></span>
+        <button class="stamp" id="stamp" type="button">✓ Çözüm doğrulandı</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <footer id="hudBottom" class="hud">
+    <div class="hud-inner">
+      <div class="belt-wrap">
+        <div class="belt-head"><span>Kuyruk</span><span id="hint">Bir kapıya dokun</span></div>
+        <div class="belt" id="belt"></div>
+      </div>
+      <div class="boosters">
+        <button class="booster" id="bUndo" type="button" style="--b:#3D8BFF;--bd:#2A5FC0" aria-label="Geri al">
+          <span class="orb"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9 5 15l6 6"/><path d="M5 15h14a7 7 0 0 1 0 14h-5"/></svg></span>
+          <span class="b-name">Geri Al</span><span class="badge" id="nUndo">5</span>
+        </button>
+        <button class="booster" id="bVac" type="button" style="--b:#14BFAE;--bd:#0B8C80" aria-label="Vakum poşeti">
+          <span class="orb"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h16l-1.5 17a2 2 0 0 1-2 1.8h-9a2 2 0 0 1-2-1.8z"/><circle cx="16" cy="17" r="3.2"/><path d="M16 4v3M10 5l1.5 2.4M22 5l-1.5 2.4"/></svg></span>
+          <span class="b-name">Vakum</span><span class="badge" id="nVac">2</span>
+        </button>
+        <button class="booster" id="bShake" type="button" style="--b:#FFA41B;--bd:#C47A00" aria-label="Silkele">
+          <span class="orb"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="10" width="14" height="16" rx="3"/><path d="M13 10V7.5a1.5 1.5 0 0 1 1.5-1.5h3a1.5 1.5 0 0 1 1.5 1.5V10"/><path d="M4 13v6M28 13v6M6.5 11v10M25.5 11v10"/></svg></span>
+          <span class="b-name">Silkele</span><span class="badge" id="nShake">2</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <div class="shake-pick" id="shakePick" hidden>
+    <div class="pad">
+      <p>Hangi yöne presleyelim?</p>
+      <span></span>
+      <button type="button" data-dir="up" aria-label="Yukarı preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      <span></span>
+      <button type="button" data-dir="left" aria-label="Sola preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg></button>
+      <button type="button" class="cancel" id="shakeCancel">İptal</button>
+      <button type="button" data-dir="right" aria-label="Sağa preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <span></span>
+      <button type="button" data-dir="down" aria-label="Aşağı preslet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></button>
+      <span></span>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOv" hidden>
+    <div class="card win" role="dialog" aria-labelledby="winTitle">
+      <h2 id="winTitle">PERFECT PACK!</h2>
+      <div class="win-stamp" id="winStamp">100% FULL</div>
+      <p id="winNote">Tek boşluk yok. Zero Gap.</p>
+      <div class="stats">
+        <div><b id="wMoves">0</b><span>hamle</span></div>
+        <div><b id="wItems">0</b><span>eşya</span></div>
+        <div><b id="wBoost">0</b><span>booster</span></div>
+      </div>
+      <button class="btn primary" id="btnNext" type="button">Sonraki bavul</button>
+      <button class="btn ghost" id="btnReplay" type="button">Bu bavulu tekrar topla</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="failOv" hidden>
+    <div class="card fail" role="dialog" aria-labelledby="failTitle">
+      <h2 id="failTitle">Out of Space!</h2>
+      <div class="sub">KAPILAR TIKANDI</div>
+      <p id="failText">Sıradaki eşya hiçbir kapıdan giremiyor ve içeride kıpırdayabilen blok kalmadı.</p>
+      <button class="btn primary" id="fUndo" type="button">Son hamleyi geri al</button>
+      <button class="btn" id="fRestart" type="button">Bölümü baştan başlat</button>
+      <button class="btn ghost" id="fClose" type="button">Kapat, booster ile dene</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="helpOv" hidden>
+    <div class="card help" role="dialog" aria-labelledby="helpTitle">
+      <h2 id="helpTitle">Pack Jam: Zero Gap</h2>
+      <p class="goal">Kuyruktaki seyahat eşyalarını kapılardan bavula yerleştir. Kuyruk bitince bavul kapanır.</p>
+      <ol>
+        <li><span><b>Kapıya dokun</b> ya da sıradaki tepsiyi kapıya sürükle. Eşya içeri girer ve bir şeye çarpana kadar kayar.</span></li>
+        <li><span>İçerideki eşyaları <b>tutup boş yöne kaydır</b>. ↔ ↕ oklu eşyalar sadece o eksende kayar ve o eksendeki kapılardan girer.</span></li>
+        <li><span><b>Boşluk hakkı</b> kaç karenin boş kalabileceğini gösterir. Boşlukları kapı ağzına ya da dağınık bırakırsan büyük eşyalar sığmaz. <b>ZERO GAP</b> bavullarında hiç boşluk yok.</span></li>
+        <li><span><b>Kemerli plaj havlusunu</b> duvara ya da sert bir eşyaya doğru itmeye devam et: 1×3'ten 1×2'ye büzüşür.</span></li>
+        <li><span><b>Takı kutusu</b> hiç kıpırdamayacak şekilde yerine oturunca sırası gelen şeffaf kapağı üstüne tak.</span></li>
+      </ol>
+      <button class="btn primary" id="btnStart" type="button">Bavulu açalım</button>
+    </div>
+  </div>
+</div>
