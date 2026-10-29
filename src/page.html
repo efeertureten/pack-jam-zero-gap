@@ -88,7 +88,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   transform: rotate(-2deg); cursor: pointer; }
 
 /* ---------- toast ---------- */
-#toast { position: absolute; left: 50%; bottom: calc(var(--bot, 220px) + 12px); z-index: 20; transform: translate(-50%, 12px); opacity: 0;
+#toast { position: absolute; left: 50%; bottom: calc(var(--bot, 220px) + 12px); z-index: 60; transform: translate(-50%, 12px); opacity: 0;
   width: max-content; max-width: min(92vw, 460px); text-align: center; text-wrap: balance;
   background: var(--ink); color: #fff; font-weight: 600; font-size: 14.5px; line-height: 1.35; padding: 10px 16px; border-radius: 14px;
   box-shadow: 0 8px 20px rgba(24, 33, 61, .3); transition: opacity .2s, transform .25s; pointer-events: none; }
@@ -156,6 +156,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .booster .b-name { font-weight: 700; font-size: 13px; color: var(--ink); }
 .booster .badge { position: absolute; top: -7px; right: -9px; min-width: 25px; height: 25px; padding: 0 5px; border-radius: 13px;
   background: var(--ink); color: #fff; font: 700 13px/21px var(--f-ui); text-align: center; border: 2px solid #fff; font-variant-numeric: tabular-nums; }
+.booster .badge.buy { background: #FFC93C; color: #6B3A04; font-size: 16px; line-height: 20px; }
 .booster.armed .orb { box-shadow: 0 5px 0 var(--bd), 0 0 0 4px #fff, 0 0 0 7px var(--b); animation: armed 1s ease-in-out infinite; }
 @keyframes armed { 50% { transform: translateY(-3px); } }
 .booster[aria-disabled="true"] { opacity: .45; filter: saturate(.4); }
@@ -178,13 +179,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 @keyframes pop { from { transform: scale(.8); opacity: 0; } }
 .card h2 { margin: 0; font: 400 30px/1.05 var(--f-display); text-wrap: balance; }
 .card p { margin: 0; color: var(--ink-2); font-size: 15px; line-height: 1.45; text-wrap: pretty; }
-.win h2 { color: var(--accent); text-shadow: 0 3px 0 var(--ink); letter-spacing: .01em; }
-.win-stamp { justify-self: center; font: 400 22px/1 var(--f-display); color: var(--ok-deep); border: 4px solid var(--ok-deep); border-radius: 10px;
-  padding: 8px 14px 6px; transform: rotate(-6deg); letter-spacing: .06em; background: rgba(31, 181, 122, .08); }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0; }
-.stats div { background: #F1F4F8; border-radius: 14px; padding: 10px 4px 8px; display: grid; gap: 4px; }
-.stats b { font: 400 22px/1 var(--f-display); font-variant-numeric: tabular-nums; }
-.stats span { font: 500 10.5px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .06em; text-transform: uppercase; }
 .fail h2 { color: var(--ink); }
 .fail .sub { font: 400 15px/1 var(--f-display); color: var(--accent); letter-spacing: .04em; }
 .btn { border: 0; border-radius: 16px; padding: 14px 18px; font-weight: 700; font-size: 16px; cursor: pointer; background: #EEF2F7; color: var(--ink);
@@ -202,6 +196,124 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .help li::before { content: counter(s); width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--tag); color: var(--tag-ink); font: 400 14px/1 var(--f-display); }
 .help li b { color: var(--ink); }
 .help .btn.ghost { justify-self: center; }
+
+/* ---------- home ---------- */
+.home { position: absolute; inset: 0; z-index: 20; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; pointer-events: none; }
+.home > * { pointer-events: auto; }
+.home > .home-stage { pointer-events: none; }
+.home-top { width: 100%; max-width: var(--hud-max); justify-self: center; display: grid; gap: 12px; padding-block: 12px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.home-bar { display: flex; align-items: center; gap: 10px; }
+.home-bar .grow { flex: 1; }
+.pill { display: flex; align-items: center; gap: 6px; height: 42px; padding: 0 16px 0 6px; border-radius: 21px; background: var(--paper);
+  box-shadow: 0 4px 0 rgba(24, 33, 61, .18); font: 400 19px/1 var(--f-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.pill > svg, .pill-coin svg { width: 32px; height: 32px; display: block; }
+.icon-btn.round { border-radius: 50%; width: 46px; height: 46px; background: #3B7FE0; color: #fff; box-shadow: 0 4px 0 #2A5FC0, inset 0 2px 0 rgba(255, 255, 255, .3); }
+.icon-btn.round svg { width: 26px; height: 26px; }
+.chest { justify-self: start; display: grid; justify-items: center; gap: 4px; border: 0; background: none; padding: 0; cursor: pointer; }
+.chest-ico svg { width: 74px; height: 64px; display: block; filter: drop-shadow(0 4px 0 rgba(24, 33, 61, .18)); }
+.chest-bar { position: relative; width: 80px; height: 24px; border-radius: 12px; background: var(--ink); border: 2.5px solid #fff; overflow: hidden; box-shadow: 0 3px 0 rgba(24, 33, 61, .2); }
+.chest-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ok); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15); transition: width .6s; }
+.chest-bar b { position: relative; display: block; text-align: center; font: 400 12px/19px var(--f-display); color: #fff; letter-spacing: .02em; }
+.chest.ready .chest-ico svg { animation: chestWiggle 1.3s ease-in-out infinite; }
+.chest.ready .chest-fill { background: #FFB020; }
+@keyframes chestWiggle { 0%, 70%, 100% { transform: rotate(0); } 76% { transform: rotate(-8deg); } 82% { transform: rotate(7deg); } 88% { transform: rotate(-5deg); } 94% { transform: rotate(3deg); } }
+.home-cta { display: grid; justify-items: center; gap: 10px; padding: 0 16px 18px; }
+.play-btn { min-width: min(78vw, 330px); height: 86px; padding: 0 28px; border-radius: 30px; border: 4px solid #FFE6D8; cursor: pointer;
+  background: linear-gradient(#FF8A55, var(--accent) 60%); color: #fff; font: 400 36px/1 var(--f-display); letter-spacing: .01em;
+  text-shadow: 0 3px 0 rgba(130, 35, 0, .5); box-shadow: 0 8px 0 var(--accent-deep), 0 16px 26px rgba(24, 33, 61, .3), inset 0 4px 0 rgba(255, 255, 255, .3); }
+.play-btn:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--accent-deep), 0 6px 12px rgba(24, 33, 61, .3), inset 0 4px 0 rgba(255, 255, 255, .3); }
+.play-btn b { font-weight: 400; }
+.trip { margin: 0; text-align: center; font: 500 11px/1.3 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); text-wrap: balance; }
+.tabbar { isolation: isolate; display: grid; grid-template-columns: repeat(3, minmax(0, 170px)); justify-content: center; align-items: end; background: var(--belt); border-top: 3px solid #3A4256;
+  box-shadow: 0 -8px 20px rgba(24, 33, 61, .18); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tab { position: relative; display: grid; justify-items: center; gap: 4px; padding: 10px 4px 12px; border: 0; background: none; cursor: pointer; color: #C9D2E3; font: 600 12.5px/1 var(--f-ui); }
+.tab svg { width: 38px; height: 38px; transition: transform .2s; }
+.tab.on { color: #fff; }
+.tab.on svg { transform: translateY(-10px) scale(1.12); }
+.tab.on::before { content: ""; position: absolute; z-index: -1; left: 6px; right: 6px; top: -18px; bottom: 0; border-radius: 20px 20px 0 0;
+  background: linear-gradient(#FF8A55, var(--accent)); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .3); }
+.panel { grid-row: 2 / 4; overflow-y: auto; overscroll-behavior: contain; justify-self: center; width: calc(100% - 24px); max-width: var(--hud-max);
+  margin: 8px 0 12px; padding: 18px 16px 20px; border-radius: 22px; background: var(--paper); box-shadow: 0 8px 0 rgba(24, 33, 61, .14), 0 18px 30px rgba(24, 33, 61, .16); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.panel-head h2 { margin: 0; font: 400 26px/1 var(--f-display); }
+.panel-sub { display: inline-flex; align-items: center; gap: 6px; font: 400 16px/1 var(--f-display); color: var(--ink); }
+.panel-sub svg { display: block; }
+.panel-note { margin: 10px 0 14px; color: var(--ink-2); font-size: 14px; line-height: 1.4; }
+.shop-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.shop-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: #F1F4F8; }
+.shop-item .orb, .buy-ico .orb { width: 56px; height: 54px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: var(--b);
+  box-shadow: 0 4px 0 var(--bd), inset 0 3px 0 rgba(255, 255, 255, .35); }
+.shop-item .orb svg, .buy-ico .orb svg { width: 28px; height: 28px; }
+.si-txt { display: grid; gap: 3px; min-width: 0; }
+.si-txt b { font-size: 16px; }
+.si-txt span { font-size: 13px; line-height: 1.35; color: var(--ink-2); }
+.si-txt small { font: 500 11px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; }
+.buy-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 14px; padding: 10px 14px; cursor: pointer; background: #FFF2D2;
+  color: #7A4A06; font: 400 17px/1 var(--f-display); box-shadow: 0 4px 0 #E2B65A; }
+.buy-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #E2B65A; }
+.buy-btn:disabled { opacity: .45; cursor: default; transform: none; }
+.map-sec h3 { display: flex; justify-content: space-between; gap: 8px; margin: 18px 0 8px; font: 500 11px/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+.map-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.lv { position: relative; display: grid; place-items: center; align-content: center; gap: 5px; aspect-ratio: 1 / 1.08; border: 0; border-radius: 14px; cursor: pointer;
+  background: linear-gradient(var(--tray-1), var(--tray-2)); box-shadow: 0 3px 0 var(--tray-edge), inset 0 0 0 2px rgba(255, 255, 255, .6); color: var(--ink); font: 400 18px/1 var(--f-display); }
+.lv .st { display: flex; gap: 1px; } .lv .st svg { display: block; }
+.lv.zg { background: linear-gradient(#2E3966, #1D2547); color: #FFD84A; box-shadow: 0 3px 0 #0E1430; }
+.lv.cur { box-shadow: 0 0 0 3px var(--accent), 0 3px 0 var(--tray-edge); animation: curPulse 1.4s ease-in-out infinite; }
+@keyframes curPulse { 50% { box-shadow: 0 0 0 5px rgba(255, 106, 61, .45), 0 3px 0 var(--tray-edge); } }
+.lv.locked { cursor: default; color: #8E9DB0; background: #E4E9F0; box-shadow: 0 3px 0 #C6CFDB; }
+.lv .lock svg { width: 15px; height: 15px; display: block; }
+.lv.endless .st { font: 400 16px/1 var(--f-display); color: var(--accent); }
+.overlay.top { z-index: 55; }
+.buy-card .buy-ico { justify-self: center; }
+.settings-card { gap: 10px; }
+.set-row { text-align: left; display: flex; align-items: center; gap: 10px; }
+.set-row svg { width: 22px; height: 22px; flex: 0 0 auto; }
+.set-row.danger { color: #C2352F; }
+
+/* ---------- result ---------- */
+.result { position: absolute; inset: 0; z-index: 45; display: grid; place-items: center; overflow: hidden; cursor: pointer; color: #fff;
+  background: radial-gradient(120% 70% at 50% 32%, #26326E 0%, #151C3D 55%, #0B1027 100%);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px; }
+.res-rays { position: absolute; left: 50%; top: 30%; width: 1000px; height: 1000px; margin: -500px 0 0 -500px; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 90, .08) 0 7deg, transparent 7deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0 22%, transparent 60%); mask-image: radial-gradient(circle, #000 0 22%, transparent 60%); animation: raySpin 30s linear infinite; }
+@keyframes raySpin { to { transform: rotate(360deg); } }
+.res-inner { position: relative; display: grid; justify-items: center; gap: 14px; width: min(100%, 420px); text-align: center; }
+.res-title { margin: 0; font: 400 clamp(38px, 12vw, 56px)/1.05 var(--f-display); color: #FFF4DF; transform: rotate(-4deg); letter-spacing: .01em;
+  -webkit-text-stroke: 3px #E2611D; paint-order: stroke fill; text-shadow: 0 5px 0 #9B3B10, 0 12px 20px rgba(0, 0, 0, .45); }
+.res-fill { font: 500 11px/1 var(--f-mono); letter-spacing: .14em; color: #BFEBDD; border: 2px solid rgba(191, 235, 221, .45); padding: 6px 10px; border-radius: 8px; }
+.res-stars { display: flex; align-items: flex-end; justify-content: center; height: 128px; margin-top: 4px; }
+.rstar { position: relative; display: block; width: 104px; height: 104px; margin: 0 -4px; }
+.rstar.mid { width: 128px; height: 128px; transform: translateY(-16px); z-index: 1; }
+.rstar svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.rstar .spark { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: #FFE15C; box-shadow: 0 0 10px #FFC93C; pointer-events: none; }
+.res-time { display: flex; align-items: center; gap: 10px; }
+.res-time svg { width: 38px; height: 42px; display: block; }
+.res-time b { font: 400 42px/1 var(--f-display); color: #FFF7E6; -webkit-text-stroke: 3px #14834F; paint-order: stroke fill; text-shadow: 0 4px 0 #0B5C38; font-variant-numeric: tabular-nums; }
+.res-goals { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; width: min(100%, 340px); }
+.res-goals li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px;
+  background: rgba(255, 255, 255, .06); color: #C8D0E8; font-size: 14px; text-align: left; }
+.res-goals li.ok { background: rgba(255, 200, 60, .13); color: #FFF7E6; }
+.res-goals .gi svg { display: block; }
+.res-goals .gv { font: 500 11.5px/1 var(--f-mono); color: #8E9AC0; white-space: nowrap; }
+.res-goals li.ok .gv { color: #FFD84A; }
+.res-coins { display: grid; justify-items: center; gap: 2px; }
+.res-coins .pile { position: relative; display: block; width: 140px; height: 96px; }
+.res-coins .pile::before { content: ""; position: absolute; inset: -30px -40px; background: radial-gradient(closest-side, rgba(255, 190, 60, .45), transparent); }
+.res-coins .pile svg { position: absolute; }
+.res-coins b { font: 400 42px/1 var(--f-display); color: #FFC93C; -webkit-text-stroke: 3px #8A4A06; paint-order: stroke fill; text-shadow: 0 4px 0 #5E3204; font-variant-numeric: tabular-nums; }
+.res-note { margin: 0; font-size: 13.5px; color: #AEB8D6; }
+.res-tap { margin: 4px 0 0; font: 600 clamp(20px, 6vw, 26px)/1.1 var(--f-ui); color: #FFF4DF; text-shadow: 0 3px 0 #9B3B10; animation: tapPulse 1.4s ease-in-out infinite; }
+@keyframes tapPulse { 50% { transform: scale(1.05); opacity: .85; } }
+.res-replay { border: 0; border-radius: 12px; padding: 10px 14px; cursor: pointer; background: rgba(255, 255, 255, .08); color: #C9D2EC; font: 600 14px/1 var(--f-ui); }
+.res-replay:hover { background: rgba(255, 255, 255, .14); }
+@media (max-height: 740px) {
+  .res-inner { gap: 10px; } .res-stars { height: 104px; } .rstar { width: 84px; height: 84px; } .rstar.mid { width: 104px; height: 104px; }
+  .res-coins .pile { width: 112px; height: 74px; } .res-time b, .res-coins b { font-size: 34px; } .res-note { display: none; }
+  .play-btn { height: 74px; font-size: 30px; } .chest-ico svg { width: 60px; height: 52px; }
+}
 
 /* ---------- full queue sheet ---------- */
 .queue-card { width: min(100%, 460px); }
@@ -240,6 +352,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   .stamp { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .res-rays, .res-tap, .lv.cur, .chest.ready .chest-ico svg { animation: none; }
   .fill-bar { animation: none; } .booster.armed .orb { animation: none; } .card { animation: none; } .tray.enter, .belt.roll { animation: none; } #tutPath { animation: none; }
 }
 </style>
@@ -259,7 +372,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         </div>
         <div class="top-actions">
           <button class="icon-btn" id="btnHelp" aria-label="Nasıl oynanır">?</button>
-          <button class="icon-btn" id="btnSound" aria-label="Sesi kapat"></button>
+          <button class="icon-btn" id="btnHome" aria-label="Ana sayfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.5 12 4.5l8.5 7"/><path d="M6 10v9.5h12V10"/><path d="M10 19.5v-5h4v5"/></svg></button>
           <button class="icon-btn" id="btnRestart" aria-label="Bölümü yeniden başlat">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>
           </button>
@@ -316,21 +429,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     </div>
   </div>
 
-  <div class="overlay" id="winOv" hidden>
-    <div class="card win" role="dialog" aria-labelledby="winTitle">
-      <h2 id="winTitle">PERFECT PACK!</h2>
-      <div class="win-stamp" id="winStamp">100% FULL</div>
-      <p id="winNote">Tek boşluk yok. Zero Gap.</p>
-      <div class="stats">
-        <div><b id="wMoves">0</b><span>hamle</span></div>
-        <div><b id="wItems">0</b><span>eşya</span></div>
-        <div><b id="wBoost">0</b><span>booster</span></div>
-      </div>
-      <button class="btn primary" id="btnNext" type="button">Sonraki bavul</button>
-      <button class="btn ghost" id="btnReplay" type="button">Bu bavulu tekrar topla</button>
-    </div>
-  </div>
-
   <div class="overlay" id="failOv" hidden>
     <div class="card fail" role="dialog" aria-labelledby="failTitle">
       <h2 id="failTitle">Out of Space!</h2>
@@ -365,6 +463,72 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
       <p id="queueSub"></p>
       <ol class="q-grid" id="queueGrid"></ol>
       <button class="btn primary" id="queueClose" type="button">Tamam</button>
+    </div>
+  </div>
+
+  <section class="home" id="home" hidden aria-label="Ana sayfa">
+    <div class="home-top" id="homeTop">
+      <div class="home-bar">
+        <div class="pill" title="Toplam yıldız"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6 63.5 34.5 94 38.5 71.5 59.5 77.5 90 50 75 22.5 90 28.5 59.5 6 38.5 36.5 34.5Z" fill="#FFB81C" stroke="#E88A00" stroke-width="7" stroke-linejoin="round"/></svg><b id="hStars">0</b></div>
+        <div class="pill" title="Jeton"><span class="pill-coin" id="hCoinIco"></span><b id="hCoins">0</b></div>
+        <span class="grow"></span>
+        <button class="icon-btn round" id="btnSettings" type="button" aria-label="Ayarlar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      </div>
+      <button class="chest" id="btnChest" type="button" aria-label="Yıldız sandığı"><span class="chest-ico" id="chestIco"></span><span class="chest-bar"><span class="chest-fill" id="chestFill"></span><b id="chestTxt">0/15</b></span></button>
+    </div>
+    <div class="home-stage" aria-hidden="true"></div>
+    <div class="home-cta" id="homeCta">
+      <button class="play-btn" id="btnPlay" type="button"><span>Bölüm</span> <b id="playNum">1</b></button>
+      <p class="trip" id="playTrip"></p>
+    </div>
+    <div class="panel" id="panelShop" hidden>
+      <div class="panel-head"><h2>Market</h2><span class="panel-sub" id="shopCoins"></span></div>
+      <p class="panel-note">Bölümdeki hakların bitince buradan aldığın yedekler kullanılır. Hakkın bitince booster düğmesine dokunarak da alabilirsin.</p>
+      <ul class="shop-list" id="shopList"></ul>
+    </div>
+    <div class="panel" id="panelMap" hidden>
+      <div class="panel-head"><h2>Bölümler</h2><span class="panel-sub" id="mapStars"></span></div>
+      <div id="mapList"></div>
+    </div>
+    <nav class="tabbar" id="tabbar" aria-label="Ana menü">
+      <button class="tab" type="button" data-tab="shop"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6 15h28v19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z" fill="#F1D7A2"/><path d="M4 9.5 7 4h26l3 5.5v3.5a4 4 0 0 1-8 0 4 4 0 0 1-8 0 4 4 0 0 1-8 0 4 4 0 0 1-8 0z" fill="#8B5CF6"/><path d="M12 4l-2 9M20 4v9M28 4l2 9" stroke="#B79CFF" stroke-width="2"/><rect x="11" y="22" width="18" height="14" rx="1.5" fill="#C79A4E"/><rect x="14" y="25" width="12" height="11" fill="#6B4A1E"/></svg><span>Market</span></button>
+      <button class="tab" type="button" data-tab="home"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 19 20 6l15 13" fill="#8B5CF6"/><path d="M8 17h24v17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z" fill="#F1D7A2"/><rect x="15" y="23" width="10" height="13" rx="1.5" fill="#C79A4E"/><path d="M20 9.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#FFC93C"/></svg><span>Ana Sayfa</span></button>
+      <button class="tab" type="button" data-tab="map"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="5" width="13" height="13" rx="3" fill="#F1D7A2"/><rect x="22" y="5" width="13" height="13" rx="3" fill="#F1D7A2"/><rect x="5" y="22" width="13" height="13" rx="3" fill="#F1D7A2"/><rect x="22" y="22" width="13" height="13" rx="3" fill="#8B5CF6"/><path d="M28.5 25.3l1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.6-3 1.6.6-3.3-2.4-2.3 3.3-.5z" fill="#FFC93C"/></svg><span>Bölümler</span></button>
+    </nav>
+  </section>
+
+  <section class="result" id="result" hidden role="dialog" aria-labelledby="resTitle">
+    <div class="res-rays" aria-hidden="true"></div>
+    <div class="res-inner">
+      <h2 class="res-title" id="resTitle">Muhteşem!</h2>
+      <span class="res-fill" id="resFill"></span>
+      <div class="res-stars" id="resStars"><span class="rstar"></span><span class="rstar mid"></span><span class="rstar"></span></div>
+      <div class="res-time"><svg viewBox="0 0 40 44" aria-hidden="true"><rect x="2" y="2" width="36" height="40" rx="7" fill="#1FB57A" stroke="#0E6B43" stroke-width="3"/><path d="M11 9h18M11 35h18M13 9c0 8 14 9 14 13s-14 5-14 13M27 9c0 8-14 9-14 13s14 5 14 13" fill="none" stroke="#FFF7E6" stroke-width="3" stroke-linecap="round"/><path d="M15 31.5c2-2.5 8-2.5 10 0z" fill="#FFF7E6"/></svg><b id="resTime">0:00</b></div>
+      <ul class="res-goals" id="resGoals"></ul>
+      <div class="res-coins"><span class="pile" id="resPile"></span><b id="resCoins">+0</b></div>
+      <p class="res-note" id="resNote"></p>
+      <p class="res-tap">Devam etmek için dokun</p>
+      <button class="res-replay" id="btnResReplay" type="button">↻ Bu bavulu tekrar topla</button>
+    </div>
+  </section>
+
+  <div class="overlay top" id="buyOv" hidden>
+    <div class="card buy-card" role="dialog" aria-labelledby="buyTitle">
+      <div class="buy-ico" id="buyIcon"></div>
+      <h2 id="buyTitle">Hakkın bitti</h2>
+      <p id="buyText"></p>
+      <button class="btn primary" id="buyOk" type="button">Satın al</button>
+      <button class="btn ghost" id="buyNo" type="button">Vazgeç</button>
+    </div>
+  </div>
+
+  <div class="overlay top" id="settingsOv" hidden>
+    <div class="card settings-card" role="dialog" aria-labelledby="setTitle">
+      <h2 id="setTitle">Ayarlar</h2>
+      <button class="btn set-row" id="setSound" type="button"></button>
+      <button class="btn set-row" id="setTips" type="button">El ipuçlarını yeniden göster</button>
+      <button class="btn set-row danger" id="setReset" type="button">İlerlemeyi sıfırla</button>
+      <button class="btn primary" id="setClose" type="button">Tamam</button>
     </div>
   </div>
 

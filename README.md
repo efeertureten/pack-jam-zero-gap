@@ -2,7 +2,7 @@
 
 Color Block Jam / Unblock Me görsel diliyle, oynanışı tersine çevrilmiş 3D mobil bulmaca. Kuyrukta bekleyen seyahat eşyalarını bavulun kenar kapılarından içeri itip yerleştiriyorsun. Kuyruk bitince bavul kapanır. Bazı bavullarda boşluk hakkın var, **Zero Gap** bavullarında hiç yok.
 
-Oynamak için `index.html` dosyasını tarayıcıda açman yeterli (Three.js r128, GSAP 3.12.5 ve fontlar CDN'den yüklenir). Belirli bir bölümü açmak için: `index.html?level=45`.
+Oynamak için `index.html` dosyasını tarayıcıda açman yeterli (Three.js r128, GSAP 3.12.5 ve fontlar CDN'den yüklenir). Ana sayfayı atlayıp belirli bir bölümü açmak için: `index.html?level=45`.
 
 ## Eşyalar
 
@@ -25,6 +25,16 @@ Bavuldaki eşyalar bu tasarımlara göre Three.js'te modellenir; kuyruk tepsisin
 - **Geniş kapılar:** Eşyanın girebileceği birden fazla şerit varsa dokunduğunda eşya girmez. Kapı ağzında hayaleti, gideceği yer ve şerit noktaları belirir. Parmağını kapı boyunca kaydırıp bırakınca ya da aynı şeride tekrar dokununca eşya girer. Başka bir şeride dokunmak seçimi oraya taşır, kapı dışına dokunmak iptal eder.
 - **Kuyruk:** Bant yatayda kaydırılabilir ve kuyruğun tamamını sırayla gösterir. Sol üstteki **Kuyruk N** düğmesi bütün sırayı eşya adı ve boyutuyla bir listede açar.
 - **El ipuçları:** 1, 4, 21, 36 ve 61. bölümlerde yeni bir mekanik açılınca bavulun üstünde yarı saydam bir el kısa bir gösterim yapar: kapıya dokunup şerit seçme (1), eşya kaydırma (4), oklu eşyanın yalnızca ok yönünde kayması (21), havlunun duvara itilip büzüşmesi (36) ve şeffaf kapağın takı kutusuna oturması (61). Oyuncu herhangi bir yere dokununca el kaybolur ve 6 saniye hareketsizlikten sonra geri gelir. Gösterilen hamle bir kez yapılınca bir daha çıkmaz. Yardım ekranındaki "El ipuçlarını yeniden göster" düğmesi hepsini sıfırlar.
+
+### Ana sayfa, yıldızlar ve jetonlar
+
+- Oyun **ana sayfada** açılır: sıradaki bavul 3D olarak döner platformda durur, etiketinde bölüm numarası yazar. **Bölüm N** düğmesi sıradaki bölümü başlatır. Oyun içindeki ev düğmesi ana sayfaya döner.
+- Alt menü: **Market** (jetonla yedek booster), **Ana Sayfa**, **Bölümler** (100 bölümün faz faz haritası, kazanılan yıldızlar, açık bölümler tekrar oynanabilir).
+- Bavul kapanınca **yıldız ekranı** gelir. Her hedef bir yıldız: bavulu kapat, Vakum ve Silkele kullanma, en fazla `ceil(çözüm adımı × 1,1) + 1` hamle. Ekranda süre, doluluk ve kazanılan jeton görünür. Ekrana dokunmak ana sayfaya döner.
+- Jeton: bir bölümü ilk bitirişte 10 + yıldız başına 5. Tekrar oynayınca sadece yeni kazanılan yıldız başına 5.
+- **Yıldız sandığı:** her 15 yıldızda açılır, 60 jeton ve sırayla bir yedek booster verir.
+- Booster bitince düğmesinde **+** görünür. Dokununca jetonla alma penceresi açılır (Geri Al 30, Silkele 50, Vakum 60). Bölümün kendi hakları bitince yedekler kullanılır.
+- İlerleme tarayıcının `localStorage`'ında tutulur (`pj-save-v1`). Ayarlar'dan ses, el ipuçları ve ilerlemeyi sıfırlama yönetilir.
 
 ### Booster'lar
 
