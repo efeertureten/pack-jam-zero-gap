@@ -6,15 +6,18 @@ Oynamak için `index.html` dosyasını tarayıcıda açman yeterli (Three.js r12
 
 ## Eşyalar
 
-| Eşya | Boyut | Kural |
-| --- | --- | --- |
-| Parfüm şişesi | 1×1 | Normal blok. Vakum'un ürettiği joker parfüm ise kapı aramadan herhangi bir boş kareye bırakılır. |
-| Pasaport cüzdanı | 1×2 / 2×1 | Oklu olanlar sadece ok yönünde kayar ve o eksendeki kapılardan girer. |
-| El oyun konsolu | 1×3 / 3×1 | Uzun blok. Dar kapıdan sadece uzun yönüyle girer. Oklu olabilir. |
-| Kemerli plaj havlusu | 1×3 → 1×2 | Duvara ya da sert bir eşyaya itmeye devam edince büzüşür. Havlu havluyu sıkıştırmaz. |
-| İlk yardım çantası | 2×2 | Standart büyük kare. |
-| Takı kutusu ve şeffaf kapağı | 2×2 | Kutu hiçbir yöne kayamayacak şekilde oturunca kuyruktaki kapağı takılır ve kutu kilitlenir. |
-| Kıyafet organizeri | 2×3 / 3×2 | Büyük hacimli eşya. Oklu olabilir. |
+| | Eşya | Kod | Boyut | Kural |
+| --- | --- | --- | --- | --- |
+| <img src="assets/items/perfume.webp" width="56"> | Parfüm şişesi | `perfume` | 1×1 | Normal blok. Vakum'un ürettiği joker parfüm (altın renkli) ise kapı aramadan herhangi bir boş kareye bırakılır. |
+| <img src="assets/items/passport.webp" width="56"> | Pasaport cüzdanı | `passport` | 2×1 / 1×2 | Oklu olanlar sadece ok yönünde kayar ve o eksendeki kapılardan girer. |
+| <img src="assets/items/console.webp" width="56"> | El oyun konsolu | `console` | 3×1 / 1×3 | Uzun blok. Dar kapıdan sadece uzun yönüyle girer. Oklu olabilir. |
+| <img src="assets/items/kit.webp" width="56"> | İlk yardım çantası | `kit` | 2×2 | Standart büyük kare. |
+| <img src="assets/items/organizer.webp" width="56"> | Kıyafet organizeri | `organizer` | 3×2 / 2×3 | Büyük hacimli eşya. Oklu olabilir. |
+| <img src="assets/items/towel.webp" width="56"> | Kemerli plaj havlusu | `towel` | 1×3 → 1×2 | Duvara ya da sert bir eşyaya itmeye devam edince büzüşür. Havlu havluyu sıkıştırmaz. |
+| <img src="assets/items/jewelry.webp" width="56"> <img src="assets/items/lid.webp" width="56"> | Takı kutusu ve şeffaf kapağı | `jewelry`, `lid` | 2×2 | Kutu hiçbir yöne kayamayacak şekilde oturunca kuyruktaki kapağı takılır ve kutu kilitlenir. |
+| <img src="assets/items/divider.webp" width="56"> | Sabit bölme | `divider` | 1×1 | Hareket etmeyen engel. |
+
+Bavuldaki eşyalar bu tasarımlara göre Three.js'te modellenir; kuyruk tepsisinde ve yardım ekranında tasarımların kendisi (arka planı silinmiş haliyle) gösterilir. Tepsideki küçük kare ızgarası sıradaki eşyanın boyutunu ve yönünü, kesikli kare havlunun büzüşen hücresini gösterir.
 
 ### Booster'lar
 
@@ -61,8 +64,20 @@ src/levels.js         100 bölümlük eğri: designLevel(n)
 src/levels.baked.js   üretilmiş {variant, attempt} tablosu (tools/bake.js yazar)
 src/game.js           Three.js sahnesi, kontroller, arayüz
 src/page.html         HTML ve CSS
+src/icons.js          kuyruk ikonları (tools/make_icons.py yazar)
+assets/items/         eşya tasarımlarının arka planı silinmiş halleri (512 px WebP)
 tools/bake.js         100 bölümü arar, doğrular, levels.baked.js ve levels.json yazar
+tools/cutout.py       eşya render'larını turkuaz stüdyo arka planından keser
+tools/make_icons.py   kesimleri assets/items ve src/icons.js olarak kaydeder
 tools/build.js        hepsini tek dosya index.html olarak birleştirir
+```
+
+Yeni bir eşya görseli geldiğinde (dosya adları `perfume`, `passport`, `console`, `kit`, `organizer`, `towel`, `jewelry`, `divider`; `.jpg`; takı kutusu görseli kapağı da içerir):
+
+```
+python3 tools/cutout.py <tasarim_klasoru> <kesim_klasoru>
+python3 tools/make_icons.py <kesim_klasoru>
+node tools/build.js
 ```
 
 `src/levels.js` dosyasında bir değeri değiştirdikten sonra:

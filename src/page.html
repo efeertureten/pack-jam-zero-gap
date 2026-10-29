@@ -121,21 +121,16 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   border: 2px dashed rgba(220, 227, 240, .45); font: 600 15px/1 var(--f-ui); }
 .empty-belt { color: #9AA6BD; font: 500 12px/1.4 var(--f-mono); align-self: center; padding: 0 8px; }
 
-.mini { position: relative; display: block; width: calc(var(--w) * var(--c)); height: calc(var(--h) * var(--c)); color: #fff;
-  border-radius: calc(var(--c) * .26); background-color: var(--col);
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .22), inset 0 2px 0 rgba(255, 255, 255, .45), 0 2px 3px rgba(0, 0, 0, .25); }
-.mini svg { position: absolute; inset: 0; margin: auto; width: calc(var(--c) * 1.25); height: calc(var(--c) * 1.25); max-width: 92%; max-height: 92%; overflow: visible; }
-.mini.vert svg { transform: rotate(90deg); }
-.mini.axis svg { width: 80%; height: 80%; transform: none; }
-.mini.it-perfume, .mini.it-joker { border-radius: calc(var(--c) * .4); transform: scale(.9); }
-.mini.it-joker { color: #B98A12; }
-.mini.it-passport { border-radius: calc(var(--c) * .16); filter: saturate(.85) brightness(.92); }
-.mini.it-towel { border-radius: calc(var(--c) * .45); background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(255, 255, 255, .7) 5px 9px); }
-.mini.it-towel.vert { background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, .7) 5px 9px); }
-.mini.it-organizer { border-radius: calc(var(--c) * .4); }
-.mini.it-jewelry { background-image: radial-gradient(circle at 18% 18%, #F2C14E 0 5%, transparent 6%), radial-gradient(circle at 82% 18%, #F2C14E 0 5%, transparent 6%), radial-gradient(circle at 18% 82%, #F2C14E 0 5%, transparent 6%), radial-gradient(circle at 82% 82%, #F2C14E 0 5%, transparent 6%); }
-.mini.it-lid { color: #B98A12; background-color: rgba(214, 241, 255, .7); border: 2px solid #E8B93A; transform: perspective(120px) rotateX(26deg);
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .9), 0 6px 0 -2px rgba(24, 33, 61, .2); }
+.ico { position: relative; display: grid; place-items: center; width: var(--box); height: var(--box); }
+.ico img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 3px 2px rgba(24, 33, 61, .28)); }
+.ico.it-joker img { filter: sepia(1) saturate(2.6) hue-rotate(-14deg) brightness(1.06) drop-shadow(0 3px 2px rgba(24, 33, 61, .28)); }
+.ico .joker-star { position: absolute; left: 6%; top: 4%; color: #F2B93B; font-size: calc(var(--box) * .32); line-height: 1; text-shadow: 0 1px 0 #fff; }
+.tray .axis-badge { position: absolute; left: 5px; top: 5px; min-width: 22px; height: 20px; padding: 0 4px; border-radius: 10px; background: var(--ink); color: #fff;
+  font: 700 14px/20px var(--f-ui); text-align: center; box-shadow: 0 2px 0 rgba(0, 0, 0, .2); }
+.tray .fp { position: absolute; right: 6px; top: 6px; overflow: visible; filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .9)); }
+.fp rect { fill: var(--ink); }
+.fp rect.soft { fill: rgba(255, 255, 255, .8); stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 2 1.6; }
+.fp rect.lid { fill: rgba(221, 243, 255, .9); stroke: #C9971F; stroke-width: 1.4; }
 
 /* ---------- boosters ---------- */
 .boosters { display: flex; justify-content: center; gap: 18px; }
@@ -164,7 +159,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 /* ---------- overlays ---------- */
 .overlay { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--scrim);
   padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
-.card { width: min(100%, 380px); background: var(--paper); border-radius: 26px; padding: 26px 22px 20px; text-align: center;
+.card { max-height: calc(100% - 8px); overflow-y: auto; width: min(100%, 380px); background: var(--paper); border-radius: 26px; padding: 26px 22px 20px; text-align: center;
   box-shadow: 0 8px 0 rgba(24, 33, 61, .25), 0 30px 60px rgba(24, 33, 61, .35); display: grid; gap: 12px; animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
 @keyframes pop { from { transform: scale(.8); opacity: 0; } }
 .card h2 { margin: 0; font: 400 30px/1.05 var(--f-display); text-wrap: balance; }
@@ -186,6 +181,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .help { text-align: left; gap: 14px; }
 .help h2 { text-align: center; color: var(--ink); }
 .help .goal { text-align: center; font-weight: 600; color: var(--ink); }
+.help-items { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 2px; }
+.help-items img { width: 100%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 2px 1px rgba(24, 33, 61, .22)); }
 .help ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; counter-reset: s; }
 .help li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; font-size: 14.5px; line-height: 1.4; color: var(--ink-2); counter-increment: s; }
 .help li::before { content: counter(s); width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--tag); color: var(--tag-ink); font: 400 14px/1 var(--f-display); }
@@ -303,6 +300,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     <div class="card help" role="dialog" aria-labelledby="helpTitle">
       <h2 id="helpTitle">Pack Jam: Zero Gap</h2>
       <p class="goal">Kuyruktaki seyahat eşyalarını kapılardan bavula yerleştir. Kuyruk bitince bavul kapanır.</p>
+      <div class="help-items" id="helpItems" aria-hidden="true"></div>
       <ol>
         <li><span><b>Kapıya dokun</b> ya da sıradaki tepsiyi kapıya sürükle. Eşya içeri girer ve bir şeye çarpana kadar kayar.</span></li>
         <li><span>İçerideki eşyaları <b>tutup boş yöne kaydır</b>. ↔ ↕ oklu eşyalar sadece o eksende kayar ve o eksendeki kapılardan girer.</span></li>

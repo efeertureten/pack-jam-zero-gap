@@ -26,6 +26,7 @@ ${body}
 ${read('src/engine.js')}
 ${read('src/levels.js')}
 ${read('src/levels.baked.js')}
+${read('src/icons.js')}
 </script>
 <script>
 ${read('src/game.js')}

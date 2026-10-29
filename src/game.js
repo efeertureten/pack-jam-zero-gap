@@ -9,8 +9,7 @@
 
   /* ---------- look ---------- */
   const PALETTE = ['#FF4D5A', '#FF8A1F', '#FFC53D', '#5FCB43', '#14BFAE', '#2F7FF0', '#8B5CF6', '#FF5FA8'];
-  const FABRIC = ['#F39BB2', '#8FCDF0', '#B7A3F5', '#FFCB85', '#9EE0C3', '#F7B39A', '#A9D7A0', '#F2A0D6'];
-  const GATE_COLORS = ['#FFC53D', '#14BFAE', '#FF5FA8', '#5FCB43', '#2F7FF0', '#FF8A1F'];
+  const GATE_COLORS = ['#F2BA45', '#22AFA3', '#EE5FA0', '#62B84C', '#3B7FE0', '#F0862E'];
   const SOCK_STRIPES = ['#FF4D5A', '#2F7FF0', '#5FCB43', '#FF8A1F', '#8B5CF6', '#14BFAE'];
   const GAP = 0.08, WALL_T = 0.34, WALL_H = 0.42;
   const H_HARD = 0.56, H_SOCK = 0.46, H_CAP = 0.17;
@@ -19,13 +18,12 @@
   const BOOSTERS = { undo: 5, vac: 2, shake: 2 };
 
   const ITEM_NAME = { perfume: 'parfüm', passport: 'pasaport', console: 'konsol', towel: 'havlu', kit: 'ilk yardım', jewelry: 'takı kutusu', organizer: 'organizer', lid: 'şeffaf kapak', joker: 'joker', divider: 'sabit bölme' };
-  const ITEM_H = { perfume: 0.46, joker: 0.46, passport: 0.36, console: 0.4, towel: 0.5, kit: 0.56, jewelry: 0.5, organizer: 0.62, divider: 0.4 };
+  const ITEM_H = { perfume: 0.5, joker: 0.5, passport: 0.34, console: 0.3, towel: 0.72, kit: 0.52, jewelry: 0.42, organizer: 0.6, divider: 0.435 };
+  const ITEM_COLOR = { perfume: '#F0399E', joker: '#F2B93B', passport: '#2C3EAE', console: '#F39434', towel: '#F4A7C3', kit: '#F2695E', jewelry: '#A55BE6', lid: '#DDF3FF', organizer: '#4DBDB7', divider: '#3F4A5C' };
   const itemOf = b => b.sock || b.type === 'sock' ? 'joker' : b.type === 'cap' ? 'lid' : b.fixed ? 'divider' : b.soft ? 'towel' : b.base ? 'jewelry' : (b.item && ITEM_H[b.item] ? b.item : E.itemForShape(b.w, b.h));
   const heightOf = b => ITEM_H[itemOf(b)] || H_HARD;
-  const plasticHex = c => PALETTE[((c % PALETTE.length) + PALETTE.length) % PALETTE.length];
-  const colorOf = b => b.sock ? '#FFF6E8' : b.soft ? FABRIC[((b.color % FABRIC.length) + FABRIC.length) % FABRIC.length] : plasticHex(b.color);
+  const colorOf = b => ITEM_COLOR[itemOf(b)] || '#FFFFFF';
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
-  function lighten(hex, t) { const c = new THREE.Color(hex); c.lerp(new THREE.Color('#ffffff'), t); return '#' + c.getHexString(); }
 
   /* ---------- state ---------- */
   const G = {
@@ -97,8 +95,8 @@
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMapping = THREE.LinearToneMapping;
+  renderer.toneMappingExposure = 0.9;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setClearColor(0x000000, 0);
@@ -123,7 +121,7 @@
   })();
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8095ad, 0.45));
-  const sun = new THREE.DirectionalLight(0xfff4e6, 1.9);
+  const sun = new THREE.DirectionalLight(0xfff4e6, 1.35);
   sun.position.set(-4.5, 13, 6.5);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -153,6 +151,25 @@
       nor[i] = n.x; nor[i + 1] = n.y; nor[i + 2] = n.z;
     }
     g.translate(0, h / 2, 0);
+    /* re-project UVs from the final (rounded) positions so printed faces are not
+       stretched; face order follows BoxGeometry: +x, -x, +y, -y, +z, -z */
+    const uv = g.attributes.uv;
+    for (const gr of g.groups) {
+      for (let i = gr.start; i < gr.start + gr.count; i++) {
+        const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+        let u, v;
+        switch (gr.materialIndex) {
+          case 0: u = (d / 2 - z) / d; v = y / h; break;
+          case 1: u = (z + d / 2) / d; v = y / h; break;
+          case 2: u = (x + w / 2) / w; v = (d / 2 - z) / d; break;
+          case 3: u = (x + w / 2) / w; v = (z + d / 2) / d; break;
+          case 4: u = (x + w / 2) / w; v = y / h; break;
+          default: u = (w / 2 - x) / w; v = y / h;
+        }
+        uv.setXY(i, u, v);
+      }
+    }
+    uv.needsUpdate = true;
     g.computeBoundingBox(); g.computeBoundingSphere();
     geoCache.set(key, g);
     return g;
@@ -184,6 +201,7 @@
   }
 
   /* ---------- canvas textures ---------- */
+  function rrPath(c, x, y, w, h, r) { c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
   function canvasTex(w, h, draw) {
     const c = document.createElement('canvas'); c.width = Math.max(2, Math.round(w)); c.height = Math.max(2, Math.round(h));
@@ -195,129 +213,198 @@
   const cachedTex = (key, w, h, draw) => { if (!texCache.has(key)) texCache.set(key, canvasTex(w, h, draw)); return texCache.get(key); };
   const PX = 128;
 
-  function obstacleTex() {
-    return cachedTex('obst', PX, PX, (c, w, h) => {
-      c.save(); rr(c, 0, 0, w, h, 16); c.clip();
-      c.strokeStyle = 'rgba(255,197,61,0.5)'; c.lineWidth = 11;
-      for (let i = -h; i < w + h; i += 32) { c.beginPath(); c.moveTo(i, h); c.lineTo(i + h, 0); c.stroke(); }
-      c.restore();
-      const cx = w / 2, cy = h / 2 + 8;
-      c.fillStyle = '#20263A'; rr(c, cx - 24, cy - 16, 48, 38, 8); c.fill();
-      c.strokeStyle = '#20263A'; c.lineWidth = 9; c.beginPath(); c.arc(cx, cy - 16, 14, Math.PI, 0); c.stroke();
-      c.fillStyle = '#FFC53D'; c.beginPath(); c.arc(cx, cy + 2, 5, 0, Math.PI * 2); c.fill();
-    });
+  /* ---------- travel items: printed surfaces ----------
+     Every item is modelled in a landscape frame (long side L along x, short
+     side S along z) and rotated when it lies vertically. Surface textures are
+     drawn in real units (PXU px per grid cell) and already contain the item's
+     colour, so the materials that carry them stay white. */
+  const PXU = 160;
+  function uTex(key, wu, hu, draw) {
+    const W = Math.max(8, Math.round(wu * PXU)), H = Math.max(8, Math.round(hu * PXU));
+    return cachedTex(key + '|' + W + 'x' + H, W, H, (c, w, h) => draw(c, w, h, PXU));
   }
-  /* ---------- travel items: decals ---------- */
-  /* draws in a landscape frame centred on 0,0 — L = long side, S = short side (px) */
-  function itemTex(key, pw, ph, draw) {
-    return cachedTex(key + '|' + pw.toFixed(2) + 'x' + ph.toFixed(2), pw * PX, ph * PX, (c, w, h) => {
-      const vertical = h > w;
-      c.save(); c.translate(w / 2, h / 2); if (vertical) c.rotate(Math.PI / 2);
-      draw(c, vertical ? h : w, vertical ? w : h);
-      c.restore();
-    });
+  let grainSeed = 7;
+  const rnd = () => { grainSeed = (grainSeed * 16807) % 2147483647; return grainSeed / 2147483647; };
+  function grain(c, w, h, a, s) {
+    const n = Math.round(w * h / (s * s) * 0.45);
+    for (let i = 0; i < n; i++) { c.fillStyle = rnd() < 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`; c.fillRect(rnd() * w, rnd() * h, s, s); }
   }
-  function passportTex(pw, ph) {
-    return itemTex('pass', pw, ph, (c, L, S) => {
-      const gold = '#F3D58C', long = L > S * 1.4;
-      c.setLineDash([12, 9]); c.lineWidth = 5; c.strokeStyle = 'rgba(243,213,140,0.85)'; rr(c, -L / 2 + 10, -S / 2 + 10, L - 20, S - 20, 14); c.stroke(); c.setLineDash([]);
-      const ex = long ? -L * 0.22 : 0, R0 = S * 0.25;
-      c.strokeStyle = gold; c.lineWidth = 5;
-      c.beginPath(); c.arc(ex, 0, R0, 0, Math.PI * 2); c.stroke();
-      c.beginPath(); c.ellipse(ex, 0, R0 * 0.45, R0, 0, 0, Math.PI * 2); c.stroke();
-      for (const k of [-0.5, 0, 0.5]) { const hw = R0 * Math.sqrt(1 - k * k); c.beginPath(); c.moveTo(ex - hw, k * R0); c.lineTo(ex + hw, k * R0); c.stroke(); }
+  function dashed(c, u, color, lw, dash, gap) { c.setLineDash([dash * u, gap * u]); c.lineCap = 'round'; c.lineWidth = lw * u; c.strokeStyle = color; c.stroke(); c.setLineDash([]); }
+  function vshade(c, w, h, top, bottom) { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, top); g.addColorStop(1, bottom); c.fillStyle = g; c.fillRect(0, 0, w, h); }
+  function hline(c, x0, x1, y, lw, col) { c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.lineWidth = lw; c.strokeStyle = col; c.stroke(); }
+  function vline(c, x, y0, y1, lw, col) { c.beginPath(); c.moveTo(x, y0); c.lineTo(x, y1); c.lineWidth = lw; c.strokeStyle = col; c.stroke(); }
+  function dome(c, w, h, hi, lo) {
+    const g = c.createRadialGradient(w * 0.4, h * 0.36, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.78);
+    g.addColorStop(0, hi); g.addColorStop(1, lo); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  }
+
+  /* Pasaport cüzdanı — blue leather, gold stitching, globe, boarding pass in a slot */
+  function passportTop(L, S) {
+    return uTex('passTop', L, S, (c, w, h, u) => {
+      c.fillStyle = '#2C3EAE'; c.fillRect(0, 0, w, h);
+      dome(c, w, h, 'rgba(130,150,255,0.18)', 'rgba(6,10,60,0.24)');
+      grain(c, w, h, 0.05, 2);
+      rr(c, 0.1 * u, 0.1 * u, w - 0.2 * u, h - 0.2 * u, 0.15 * u); dashed(c, u, '#EDBE4E', 0.024, 0.06, 0.045);
+      const long = w > h * 1.4, gx = long ? w * 0.36 : w / 2, gy = h / 2, R = Math.min(w, h) * 0.25;
+      c.strokeStyle = '#EAB847'; c.lineWidth = 0.03 * u; c.lineCap = 'round';
+      c.beginPath(); c.arc(gx, gy, R, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.ellipse(gx, gy, R * 0.45, R, 0, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.moveTo(gx, gy - R); c.lineTo(gx, gy + R); c.stroke();
+      for (const k of [-0.52, 0, 0.52]) {
+        const hw = R * Math.sqrt(1 - k * k), bow = k * R * 0.14;
+        c.beginPath(); c.moveTo(gx - hw, gy + k * R); c.quadraticCurveTo(gx, gy + k * R + bow, gx + hw, gy + k * R); c.stroke();
+      }
       if (!long) return;
-      c.fillStyle = gold; c.font = `700 ${Math.round(S * 0.15)}px ui-monospace, Menlo, Consolas, monospace`;
-      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('PASAPORT', L * 0.17, -S * 0.15);
-      c.save(); c.translate(L * 0.2, S * 0.17); c.rotate(-0.06);
-      c.fillStyle = '#FFFFFF'; rr(c, -L * 0.15, -S * 0.11, L * 0.3, S * 0.22, 6); c.fill();
-      c.fillStyle = '#2F7FF0'; c.fillRect(-L * 0.15, -S * 0.11, L * 0.05, S * 0.22);
-      c.fillStyle = '#18213D'; for (let i = 0; i < 12; i++) c.fillRect(-L * 0.07 + i * L * 0.016, -S * 0.06, i % 3 ? 2 : 4, S * 0.12);
-      c.restore();
+      const sx = w * 0.66, cw = 0.38 * u, ch = h * 0.5, cy = gy - ch / 2;
+      c.fillStyle = 'rgba(0,0,30,0.35)'; rr(c, sx + 0.025 * u, cy + 0.03 * u, cw, ch, 0.04 * u); c.fill();
+      c.fillStyle = '#FFFFFF'; rr(c, sx, cy, cw, ch, 0.04 * u); c.fill();
+      c.fillStyle = '#2F9BEA'; c.fillRect(sx + cw - 0.09 * u, cy, 0.09 * u, ch);
+      c.save(); c.translate(sx + cw - 0.045 * u, gy); c.fillStyle = '#FFFFFF';
+      c.beginPath(); c.moveTo(0, -0.05 * u); c.lineTo(0.012 * u, -0.012 * u); c.lineTo(0.035 * u, 0); c.lineTo(0.012 * u, 0.012 * u); c.lineTo(0, 0.05 * u); c.lineTo(-0.012 * u, 0.012 * u); c.lineTo(-0.03 * u, 0.006 * u); c.lineTo(-0.03 * u, -0.006 * u); c.lineTo(-0.012 * u, -0.012 * u); c.closePath(); c.fill(); c.restore();
+      c.fillStyle = '#1B2140';
+      for (let y = cy + 0.06 * u; y < cy + ch * 0.62; y += 0.016 * u) c.fillRect(sx + 0.045 * u, y, 0.07 * u, rnd() < 0.4 ? 0.01 * u : 0.005 * u);
+      c.fillStyle = 'rgba(40,50,80,0.55)';
+      for (let k = 0; k < 4; k++) c.fillRect(sx + 0.15 * u + k * 0.035 * u, cy + 0.06 * u, 0.012 * u, ch * (0.35 + 0.12 * (k % 2)));
+      c.fillStyle = '#2F9BEA'; c.fillRect(sx + 0.15 * u, cy + ch - 0.12 * u, 0.1 * u, 0.012 * u);
+      c.strokeStyle = 'rgba(5,8,40,0.75)'; c.lineWidth = 0.035 * u; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(sx - 0.005 * u, cy - 0.06 * u); c.lineTo(sx - 0.005 * u, cy + ch + 0.06 * u); c.stroke();
     });
   }
-  function consoleTex(pw, ph) {
-    return itemTex('cons', pw, ph, (c, L, S) => {
-      const roomy = L >= S * 1.7, sw = roomy ? Math.min(L * 0.44, L - S * 1.3) : L * 0.62, sh = S * 0.62;
-      c.fillStyle = 'rgba(24,33,61,0.92)'; rr(c, -sw / 2 - 8, -sh / 2 - 8, sw + 16, sh + 16, 14); c.fill();
-      const gr = c.createLinearGradient(-sw / 2, -sh / 2, sw / 2, sh / 2);
-      gr.addColorStop(0, '#4A6FA8'); gr.addColorStop(0.5, '#243A63'); gr.addColorStop(1, '#16213C');
-      c.fillStyle = gr; rr(c, -sw / 2, -sh / 2, sw, sh, 8); c.fill();
-      c.fillStyle = 'rgba(255,255,255,0.14)'; c.beginPath(); c.moveTo(-sw / 2, -sh / 2); c.lineTo(-sw / 2 + sw * 0.42, -sh / 2); c.lineTo(-sw / 2 + sw * 0.16, sh / 2); c.lineTo(-sw / 2, sh / 2); c.closePath(); c.fill();
-      if (!roomy) return;
-      const side = (L / 2 - sw / 2) / 2 + sw / 2, arm = S * 0.19, th = S * 0.1;
-      c.fillStyle = '#20263A'; rr(c, -side - arm, -th / 2, arm * 2, th, 4); c.fill(); rr(c, -side - th / 2, -arm, th, arm * 2, 4); c.fill();
-      const br = S * 0.08; c.fillStyle = '#FFFFFF'; c.strokeStyle = '#20263A'; c.lineWidth = 4;
-      for (const [ox, oy] of [[-br * 1.15, br * 1.15], [br * 1.15, -br * 1.15]]) { c.beginPath(); c.arc(side + ox, oy, br, 0, Math.PI * 2); c.fill(); c.stroke(); }
+  function passportSide(len, hgt) {
+    return uTex('passSide', len, hgt, (c, w, h, u) => {
+      vshade(c, w, h, '#2E40B0', '#1D2C86'); grain(c, w, h, 0.05, 2);
+      c.beginPath(); c.moveTo(0.04 * u, h * 0.62); c.lineTo(w - 0.04 * u, h * 0.62); dashed(c, u, '#E9B84A', 0.022, 0.06, 0.045);
     });
   }
-  function towelTex(pw, ph, compressed) {
-    return itemTex('towel|' + compressed, pw, ph, (c, L, S) => {
-      const band = compressed ? S * 0.15 : S * 0.22;
-      c.save(); rr(c, -L / 2, -S / 2, L, S, 20); c.clip();
-      for (let x = -L / 2, i = 0; x < L / 2; x += band, i++) if (i % 2) { c.fillStyle = 'rgba(255,255,255,0.72)'; c.fillRect(x, -S / 2, band * 0.6, S); }
-      c.restore();
-      const bw = S * 0.3;
-      c.fillStyle = '#8A5A33'; c.fillRect(-bw / 2, -S / 2, bw, S);
-      c.strokeStyle = 'rgba(0,0,0,0.28)'; c.lineWidth = 3; c.strokeRect(-bw / 2 + 2, -S / 2, bw - 4, S);
-      c.strokeStyle = '#F2C14E'; c.lineWidth = 6; rr(c, -bw * 0.42, -S * 0.16, bw * 0.84, S * 0.32, 4); c.stroke();
-      c.fillStyle = '#F2C14E'; c.fillRect(-3, -S * 0.16, 6, S * 0.32);
-      if (compressed) return;
-      c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 7; c.lineCap = 'round'; c.lineJoin = 'round';
-      const cx = L / 2 - S * 0.3, a = S * 0.12;
-      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * cx, -a); c.lineTo(s * cx - s * a, 0); c.lineTo(s * cx, a); c.stroke(); }
+
+  /* El konsolu — orange shell, ridged grips; screen, d-pad and buttons are meshes */
+  function consoleTop(L, S) {
+    return uTex('consTop', L, S, (c, w, h, u) => {
+      c.fillStyle = '#F39434'; c.fillRect(0, 0, w, h);
+      dome(c, w, h, 'rgba(255,220,160,0.22)', 'rgba(150,60,0,0.16)');
+      for (const end of [0, 1]) for (let i = 0; i < 5; i++) {
+        const x = end ? w - (0.08 + i * 0.07) * u : (0.08 + i * 0.07) * u;
+        vline(c, x, 0.06 * u, h - 0.06 * u, 0.024 * u, '#C9661E');
+        vline(c, x + (end ? -1 : 1) * 0.016 * u, 0.06 * u, h - 0.06 * u, 0.012 * u, 'rgba(255,205,140,0.85)');
+      }
+      c.strokeStyle = 'rgba(190,90,20,0.55)'; c.lineWidth = 0.016 * u;
+      const px = 0.48 * u;
+      c.beginPath(); c.moveTo(px, 0.07 * u); c.bezierCurveTo(px + 0.16 * u, 0.07 * u, px + 0.1 * u, h * 0.3, px + 0.26 * u, h * 0.3);
+      c.lineTo(w - px - 0.26 * u, h * 0.3); c.bezierCurveTo(w - px - 0.1 * u, h * 0.3, w - px - 0.16 * u, 0.07 * u, w - px, 0.07 * u); c.stroke();
+      c.fillStyle = '#C9661E';
+      rr(c, w * 0.5 - 0.62 * u, h - 0.17 * u, 0.09 * u, 0.035 * u, 0.017 * u); c.fill();
+      rr(c, w * 0.5 + 0.53 * u, h - 0.17 * u, 0.09 * u, 0.035 * u, 0.017 * u); c.fill();
     });
   }
-  function kitTex(pw, ph) {
-    return itemTex('kit', pw, ph, (c, L, S) => {
-      c.setLineDash([10, 7]); c.lineWidth = 6; c.strokeStyle = 'rgba(24,33,61,0.45)'; rr(c, -L / 2 + 12, -S / 2 + 12, L - 24, S - 24, 18); c.stroke(); c.setLineDash([]);
-      const r = Math.min(L, S) * 0.27, a = r * 0.62, t = r * 0.36;
-      c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(0, S * 0.06, r, 0, Math.PI * 2); c.fill();
-      c.fillStyle = '#E8414B'; rr(c, -a, S * 0.06 - t / 2, a * 2, t, 4); c.fill(); rr(c, -t / 2, S * 0.06 - a, t, a * 2, 4); c.fill();
-    });
-  }
-  function jewelTex(pw, ph) {
-    return itemTex('jewel', pw, ph, (c, L, S) => {
-      const pad = 14, cw = (L - pad * 2) / 2, ch = (S - pad * 2) / 2;
-      const draws = [
-        (x, y) => { c.strokeStyle = '#F2C14E'; c.lineWidth = 6; c.beginPath(); c.arc(x, y + 6, 18, 0, Math.PI * 2); c.stroke(); c.fillStyle = '#7FD6FF'; c.beginPath(); c.arc(x, y - 14, 8, 0, Math.PI * 2); c.fill(); },
-        (x, y) => { c.fillStyle = '#FFF8EE'; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x - 24 + k * 12, y + Math.sin(k) * 6, 6, 0, Math.PI * 2); c.fill(); } },
-        (x, y) => { c.strokeStyle = '#20263A'; c.lineWidth = 9; c.beginPath(); c.moveTo(x, y - 30); c.lineTo(x, y + 30); c.stroke(); c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(x, y, 17, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#F2C14E'; c.lineWidth = 4; c.stroke(); c.strokeStyle = '#20263A'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 10); c.moveTo(x, y); c.lineTo(x + 7, y + 3); c.stroke(); },
-        (x, y) => { for (const ox of [-12, 12]) { c.strokeStyle = '#F2C14E'; c.lineWidth = 4; c.beginPath(); c.arc(x + ox, y - 8, 6, 0, Math.PI * 2); c.stroke(); c.fillStyle = '#FF7AA8'; c.beginPath(); c.arc(x + ox, y + 8, 7, 0, Math.PI * 2); c.fill(); } }
-      ];
-      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) {
-        const x = -L / 2 + pad + i * cw, y = -S / 2 + pad + j * ch;
-        c.fillStyle = '#4B2A57'; rr(c, x + 5, y + 5, cw - 10, ch - 10, 12); c.fill();
-        c.strokeStyle = '#E8C66A'; c.lineWidth = 4; c.stroke();
-        draws[j * 2 + i](x + cw / 2, y + ch / 2);
+  function consoleSide(len, hgt, isEnd) {
+    return uTex('consSide' + (isEnd ? 'E' : 'L'), len, hgt, (c, w, h, u) => {
+      vshade(c, w, h, '#F6993A', '#D9741F');
+      hline(c, 0, w, h * 0.5, 0.012 * u, 'rgba(160,70,10,0.6)');
+      if (isEnd) { for (let i = 1; i <= 3; i++) hline(c, 0.08 * u, w - 0.08 * u, h * i / 4, 0.02 * u, 'rgba(170,80,15,0.55)'); return; }
+      for (const end of [0, 1]) for (let i = 0; i < 5; i++) {
+        const x = end ? w - (0.08 + i * 0.07) * u : (0.08 + i * 0.07) * u;
+        vline(c, x, 0, h, 0.022 * u, '#C9661E');
       }
     });
   }
-  function lidTex(pw, ph) {
-    return itemTex('lid', pw, ph, (c, L, S) => {
-      c.strokeStyle = '#F2C14E'; c.lineWidth = 7; rr(c, -L / 2 + 6, -S / 2 + 6, L - 12, S - 12, 16); c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 9; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(-L * 0.32, S * 0.08); c.lineTo(-L * 0.12, -S * 0.2); c.stroke();
-      c.beginPath(); c.moveTo(-L * 0.22, S * 0.22); c.lineTo(-L * 0.04, -S * 0.02); c.stroke();
+
+  /* İlk yardım çantası — coral case, white stitching, white disc with a red cross */
+  function kitTop(L, S) {
+    return uTex('kitTop', L, S, (c, w, h, u) => {
+      c.fillStyle = '#F2695E'; c.fillRect(0, 0, w, h);
+      dome(c, w, h, 'rgba(255,200,190,0.35)', 'rgba(150,20,20,0.18)');
+      rr(c, 0.2 * u, 0.2 * u, w - 0.4 * u, h - 0.4 * u, 0.2 * u); dashed(c, u, 'rgba(255,255,255,0.95)', 0.022, 0.07, 0.055);
+      const cx = w / 2, cy = h / 2, R = 0.37 * u;
+      c.fillStyle = 'rgba(120,20,20,0.18)'; c.beginPath(); c.arc(cx + 0.015 * u, cy + 0.02 * u, R, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#FFFFFF'; c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fill();
+      const a = 0.26 * u, t = 0.09 * u;
+      c.fillStyle = '#E2262E'; rr(c, cx - a, cy - t, a * 2, t * 2, 0.02 * u); c.fill(); rr(c, cx - t, cy - a, t * 2, a * 2, 0.02 * u); c.fill();
     });
   }
-  function organizerTex(pw, ph) {
-    return itemTex('org', pw, ph, (c, L, S) => {
-      const mx = L * 0.12, my = S * 0.17, ww = L - 2 * mx, hh = S - 2 * my;
-      c.fillStyle = 'rgba(16,22,40,0.28)'; rr(c, -ww / 2, -hh / 2, ww, hh, 16); c.fill();
-      c.save(); rr(c, -ww / 2, -hh / 2, ww, hh, 16); c.clip();
-      c.strokeStyle = 'rgba(255,255,255,0.3)'; c.lineWidth = 2.5;
-      for (let k = -L; k < L; k += 15) { c.beginPath(); c.moveTo(k, -S / 2); c.lineTo(k + S, S / 2); c.stroke(); c.beginPath(); c.moveTo(k, S / 2); c.lineTo(k + S, -S / 2); c.stroke(); }
+  function kitSide(len, hgt) {
+    return uTex('kitSide', len, hgt, (c, w, h, u) => {
+      vshade(c, w, h, '#F06A5F', '#C94C42');
+      hline(c, 0, w, h * 0.43, 0.026 * u, 'rgba(120,25,20,0.55)');
+      hline(c, 0, w, h * 0.43 + 0.022 * u, 0.012 * u, 'rgba(255,170,160,0.75)');
+    });
+  }
+
+  /* Organizer — teal fabric, black zip trim with stitching, dark mesh window */
+  function organizerTop(L, S) {
+    return uTex('orgTop', L, S, (c, w, h, u) => {
+      c.fillStyle = '#4DBDB7'; c.fillRect(0, 0, w, h); grain(c, w, h, 0.06, 2);
+      c.fillStyle = '#1D2125'; rr(c, 0.07 * u, 0.07 * u, w - 0.14 * u, h - 0.14 * u, 0.32 * u); c.fill();
+      rr(c, 0.15 * u, 0.15 * u, w - 0.3 * u, h - 0.3 * u, 0.26 * u); dashed(c, u, 'rgba(255,255,255,0.85)', 0.012, 0.035, 0.03);
+      const ix = 0.24 * u;
+      c.save(); rr(c, ix, ix, w - 2 * ix, h - 2 * ix, 0.2 * u); c.clip();
+      c.fillStyle = '#2B3336'; c.fillRect(0, 0, w, h);
+      const sp = 0.045 * u, rad = 0.012 * u;
+      c.fillStyle = 'rgba(86,170,165,0.85)';
+      for (let j = 0, y = ix; y < h - ix; y += sp * 0.866, j++) for (let x = ix + (j % 2) * sp / 2; x < w - ix; x += sp) { c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fill(); }
+      const g = c.createLinearGradient(0, 0, w, h); g.addColorStop(0, 'rgba(255,255,255,0.08)'); g.addColorStop(0.45, 'rgba(0,0,0,0.12)'); g.addColorStop(1, 'rgba(255,255,255,0.05)');
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
       c.restore();
-      c.strokeStyle = '#20263A'; c.lineWidth = 8; rr(c, -ww / 2 - 10, -hh / 2 - 10, ww + 20, hh + 20, 22); c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 2; c.setLineDash([3, 5]); rr(c, -ww / 2 - 10, -hh / 2 - 10, ww + 20, hh + 20, 22); c.stroke(); c.setLineDash([]);
-      c.fillStyle = 'rgba(24,33,61,0.38)'; rr(c, L / 2 - mx * 0.78, -S * 0.17, mx * 0.46, S * 0.34, 6); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 0.02 * u; rr(c, ix, ix, w - 2 * ix, h - 2 * ix, 0.2 * u); c.stroke();
     });
   }
+  function organizerSide(len, hgt) {
+    return uTex('orgSide', len, hgt, (c, w, h, u) => {
+      vshade(c, w, h, '#50C1BB', '#3A9E99'); grain(c, w, h, 0.07, 2);
+      c.strokeStyle = 'rgba(0,40,40,0.06)'; c.lineWidth = 1;
+      for (let x = 0; x < w; x += 4) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); }
+      const band = 0.15 * u;
+      c.fillStyle = '#1D2125'; c.fillRect(0, 0, w, band);
+      c.fillStyle = '#3B4146'; for (let x = 0.02 * u; x < w; x += 0.024 * u) c.fillRect(x, band * 0.38, 0.012 * u, band * 0.24);
+      c.beginPath(); c.moveTo(0, band + 0.03 * u); c.lineTo(w, band + 0.03 * u); dashed(c, u, 'rgba(255,255,255,0.8)', 0.012, 0.035, 0.03);
+      c.beginPath(); c.moveTo(0, h - 0.07 * u); c.lineTo(w, h - 0.07 * u); dashed(c, u, 'rgba(255,255,255,0.55)', 0.01, 0.035, 0.03);
+    });
+  }
+
+  /* Plaj havlusu — striped fleece roll, spiral ends */
+  function towelSkin(len, compressed) {
+    return uTex('towelSkin' + (compressed ? 'C' : ''), 1.6, len, (c, w, h, u) => {
+      const bands = compressed ? 7 : 6, bw = h / bands;
+      for (let i = 0; i < bands; i++) {
+        c.fillStyle = i % 2 ? '#FDE7EF' : '#F290B6';
+        c.fillRect(0, i * bw, w, bw + 1);
+      }
+      for (let i = 1; i < bands; i++) { const g = c.createLinearGradient(0, i * bw - 6, 0, i * bw + 6); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.22)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, i * bw - 6, w, 12); }
+      if (compressed) { c.strokeStyle = 'rgba(160,60,100,0.18)'; c.lineWidth = 3; for (let i = 0; i < bands * 2; i++) { const y = (i + 0.5) * bw / 2; c.beginPath(); c.moveTo(0, y); for (let x = 0; x <= w; x += 20) c.lineTo(x, y + Math.sin(x * 0.05 + i) * 2); c.stroke(); } }
+      grain(c, w, h, 0.06, 3);
+    });
+  }
+  const towelEnd = () => cachedTex('towelEnd', 256, 256, (c, w, h) => {
+    c.fillStyle = '#F290B6'; c.fillRect(0, 0, w, h);
+    c.save(); c.translate(w / 2, h / 2);
+    const turns = 3.2, maxR = w * 0.48;
+    for (const [col, lw, off] of [['rgba(170,60,105,0.45)', 9, 3], ['#FCDDE8', 6, 0]]) {
+      c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      for (let a = 0; a < turns * Math.PI * 2; a += 0.05) { const r = maxR * a / (turns * Math.PI * 2); const x = Math.cos(a) * r + off, y = Math.sin(a) * r + off; if (a) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.stroke();
+    }
+    c.restore(); grain(c, w, h, 0.07, 3);
+  });
+
+  /* Sabit bölme — slate lock plate with a hazard-striped frame */
+  function dividerTop(L, S) {
+    return uTex('divTop', L, S, (c, w, h, u) => {
+      c.fillStyle = '#3F4A5C'; c.fillRect(0, 0, w, h);
+      dome(c, w, h, 'rgba(255,255,255,0.08)', 'rgba(0,0,0,0.2)');
+      const o = 0.07 * u, i = 0.25 * u;
+      c.save(); c.beginPath(); rrPath(c, o, o, w - 2 * o, h - 2 * o, 0.1 * u); rrPath(c, i, i, w - 2 * i, h - 2 * i, 0.06 * u); c.clip('evenodd');
+      c.fillStyle = '#FFD21F';
+      for (let k = -h; k < w + h; k += 0.14 * u) { c.beginPath(); c.moveTo(k, 0); c.lineTo(k + 0.065 * u, 0); c.lineTo(k + 0.065 * u - h, h); c.lineTo(k - h, h); c.closePath(); c.fill(); }
+      c.restore();
+      const g = c.createLinearGradient(i, i, w - i, h - i); g.addColorStop(0, '#2B3443'); g.addColorStop(1, '#465266');
+      c.fillStyle = g; rr(c, i, i, w - 2 * i, h - 2 * i, 0.06 * u); c.fill();
+      c.fillStyle = '#38424F'; rr(c, i + 0.02 * u, i + 0.025 * u, w - 2 * i - 0.04 * u, h - 2 * i - 0.04 * u, 0.05 * u); c.fill();
+    });
+  }
+
   function sparkleTex() {
     return cachedTex('sparkle', PX, PX, (c, w, h) => {
       const star = (x, y, r) => { c.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr2 = i % 2 ? r * 0.35 : r; c.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); } c.closePath(); c.fill(); };
-      c.fillStyle = '#F2C14E'; star(w * 0.24, h * 0.26, 16); star(w * 0.78, h * 0.72, 12); c.fillStyle = '#FFFFFF'; star(w * 0.76, h * 0.24, 9);
+      c.fillStyle = '#FFFFFF'; star(w * 0.2, h * 0.22, 14); star(w * 0.8, h * 0.78, 11); c.fillStyle = '#FFF2C2'; star(w * 0.8, h * 0.2, 8);
     });
   }
   const chevBase = canvasTex(128, 192, (c, w, h) => {
@@ -357,21 +444,6 @@
     if (!matCache.has(k)) matCache.set(k, new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: 0.34, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.18, envMapIntensity: 0.4 }));
     return matCache.get(k);
   }
-  function fabric(hex) {
-    const k = 'f' + hex;
-    if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.88, metalness: 0, envMapIntensity: 0.25 }));
-    return matCache.get(k);
-  }
-  function leather(hex) {
-    const k = 'l' + hex;
-    if (!matCache.has(k)) matCache.set(k, new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: 0.55, metalness: 0, clearcoat: 0.25, clearcoatRoughness: 0.5, envMapIntensity: 0.3 }));
-    return matCache.get(k);
-  }
-  function glass(hex) {
-    const k = 'g' + hex;
-    if (!matCache.has(k)) matCache.set(k, new THREE.MeshPhysicalMaterial({ color: lin(hex), roughness: 0.06, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.0 }));
-    return matCache.get(k);
-  }
   function decalMat(tex) {
     const k = 'd' + tex.uuid;
     if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
@@ -381,7 +453,6 @@
     shell: new THREE.MeshPhysicalMaterial({ color: lin('#1F2C52'), roughness: 0.45, clearcoat: 0.35, envMapIntensity: 0.35 }),
     wall: new THREE.MeshPhysicalMaterial({ color: lin('#2B3D72'), roughness: 0.4, clearcoat: 0.5, envMapIntensity: 0.4 }),
     corner: new THREE.MeshStandardMaterial({ color: lin('#121729'), roughness: 0.5, envMapIntensity: 0.3 }),
-    obstacle: new THREE.MeshStandardMaterial({ color: lin('#3A4260'), roughness: 0.55, envMapIntensity: 0.3 }),
     gold: new THREE.MeshStandardMaterial({ color: lin('#F2C14E'), metalness: 1, roughness: 0.26, envMapIntensity: 1.1 }),
     metal: new THREE.MeshStandardMaterial({ color: lin('#C9CED8'), metalness: 1, roughness: 0.3, envMapIntensity: 1.0 }),
     zip: new THREE.MeshStandardMaterial({ color: lin('#232838'), metalness: 0.6, roughness: 0.35 }),
@@ -389,7 +460,36 @@
     hit: new THREE.MeshBasicMaterial({ visible: false }),
     rubber: new THREE.MeshStandardMaterial({ color: lin('#232838'), roughness: 0.6 }),
     lidGlass: new THREE.MeshPhysicalMaterial({ color: lin('#D6F1FF'), roughness: 0.04, metalness: 0, clearcoat: 1, transparent: true, opacity: 0.4, depthWrite: false, envMapIntensity: 1.3 }),
-    ghost: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false })
+    ghost: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false }),
+    /* travel items (colours from the item art) */
+    perfumeCore: new THREE.MeshPhysicalMaterial({ color: lin('#FF72C2'), roughness: 0.18, clearcoat: 0.6, envMapIntensity: 0.6, emissive: lin('#5A0B33'), emissiveIntensity: 0.3 }),
+    perfumeGlass: new THREE.MeshPhysicalMaterial({ color: lin('#F0399E'), roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, transparent: true, opacity: 0.55, depthWrite: false, envMapIntensity: 1.4 }),
+    jokerCore: new THREE.MeshPhysicalMaterial({ color: lin('#FFE39A'), roughness: 0.18, clearcoat: 0.6, envMapIntensity: 0.6, emissive: lin('#5A3A00'), emissiveIntensity: 0.3 }),
+    jokerGlass: new THREE.MeshPhysicalMaterial({ color: lin('#F2B93B'), roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, transparent: true, opacity: 0.5, depthWrite: false, envMapIntensity: 1.4 }),
+    capDark: new THREE.MeshPhysicalMaterial({ color: lin('#30353E'), roughness: 0.35, clearcoat: 0.4, envMapIntensity: 0.5 }),
+    leather: new THREE.MeshPhysicalMaterial({ color: lin('#2C3EAE'), roughness: 0.62, clearcoat: 0.18, clearcoatRoughness: 0.5, envMapIntensity: 0.3 }),
+    plasticOrange: new THREE.MeshPhysicalMaterial({ color: lin('#F39434'), roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.18, envMapIntensity: 0.45 }),
+    bezel: new THREE.MeshStandardMaterial({ color: lin('#1D2440'), roughness: 0.5, envMapIntensity: 0.3 }),
+    screen: new THREE.MeshPhysicalMaterial({ color: lin('#22388A'), roughness: 0.05, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.3 }),
+    dpad: new THREE.MeshPhysicalMaterial({ color: lin('#2A2326'), roughness: 0.4, clearcoat: 0.3, envMapIntensity: 0.4 }),
+    button: new THREE.MeshPhysicalMaterial({ color: lin('#F4F2EE'), roughness: 0.3, clearcoat: 0.5, envMapIntensity: 0.4 }),
+    plasticCoral: new THREE.MeshPhysicalMaterial({ color: lin('#F2695E'), roughness: 0.26, clearcoat: 0.8, clearcoatRoughness: 0.12, envMapIntensity: 0.5 }),
+    fabricTeal: new THREE.MeshStandardMaterial({ color: lin('#4DBDB7'), roughness: 0.9, envMapIntensity: 0.25 }),
+    fleece: new THREE.MeshStandardMaterial({ color: lin('#F4A7C3'), roughness: 0.95, envMapIntensity: 0.2 }),
+    belt: new THREE.MeshPhysicalMaterial({ color: lin('#6E4231'), roughness: 0.55, clearcoat: 0.2, envMapIntensity: 0.3 }),
+    fringe: new THREE.MeshStandardMaterial({ color: lin('#F49DBE'), roughness: 0.95 }),
+    plasticPurple: new THREE.MeshPhysicalMaterial({ color: lin('#A55BE6'), roughness: 0.28, clearcoat: 0.7, clearcoatRoughness: 0.15, envMapIntensity: 0.5 }),
+    velvet: new THREE.MeshStandardMaterial({ color: lin('#6A2AA6'), roughness: 0.95, envMapIntensity: 0.15 }),
+    velvetDark: new THREE.MeshStandardMaterial({ color: lin('#58208F'), roughness: 0.95, envMapIntensity: 0.15 }),
+    gem: new THREE.MeshPhysicalMaterial({ color: lin('#2F7FF0'), roughness: 0.05, metalness: 0.2, clearcoat: 1, envMapIntensity: 1.5 }),
+    pearl: new THREE.MeshPhysicalMaterial({ color: lin('#F8F3EA'), roughness: 0.22, clearcoat: 0.8, envMapIntensity: 1.0 }),
+    earring: new THREE.MeshPhysicalMaterial({ color: lin('#FF7FB0'), roughness: 0.15, clearcoat: 1, envMapIntensity: 0.8 }),
+    strap: new THREE.MeshStandardMaterial({ color: lin('#6B3A2C'), roughness: 0.6 }),
+    watchFace: new THREE.MeshPhysicalMaterial({ color: lin('#FBFAF6'), roughness: 0.25, clearcoat: 0.6, envMapIntensity: 0.5 }),
+    roseGold: new THREE.MeshStandardMaterial({ color: lin('#E0A784'), metalness: 1, roughness: 0.3, envMapIntensity: 1.1 }),
+    slate: new THREE.MeshPhysicalMaterial({ color: lin('#3F4A5C'), roughness: 0.5, clearcoat: 0.25, envMapIntensity: 0.35 }),
+    lockBody: new THREE.MeshPhysicalMaterial({ color: lin('#1F2531'), roughness: 0.4, clearcoat: 0.3, envMapIntensity: 0.4 }),
+    hazard: new THREE.MeshStandardMaterial({ color: lin('#FFD21F'), roughness: 0.5, envMapIntensity: 0.3 })
   };
 
   /* ======================================================================
@@ -479,77 +579,195 @@
   }
 
   /* ---------- blocks (travel items) ---------- */
-  function meshKey(b) { return [itemOf(b), b.w, b.h, +!!b.compressed, +!!b.capped, b.color, b.axis, b.softAxis].join('|'); }
+  function meshKey(b) { return [itemOf(b), b.w, b.h, +!!b.compressed, +!!b.capped, b.axis, b.softAxis].join('|'); }
   function addDecal(group, tex, w, d, y) {
     const m = new THREE.Mesh(planeGeo(w, d), decalMat(tex));
     m.rotation.x = -Math.PI / 2; m.position.y = y + 0.004; m.renderOrder = 2; group.add(m);
     return m;
   }
-  function addMesh(group, geo, mat, x, y, z) {
-    const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); m.castShadow = true; group.add(m); return m;
+  function addMesh(group, geo, mat, x, y, z, shadow) {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0);
+    m.castShadow = shadow !== false; m.receiveShadow = true; group.add(m); return m;
   }
-  function cylGeo(r, h) {
-    const key = 'cyl|' + r + '|' + h;
-    if (!geoCache.has(key)) { const g = new THREE.CylinderGeometry(r, r, h, 24); g.translate(0, h / 2, 0); geoCache.set(key, g); }
-    return geoCache.get(key);
+  function cached(key, make) { if (!geoCache.has(key)) geoCache.set(key, make()); return geoCache.get(key); }
+  const cylGeo = (r, h, seg) => cached('cyl|' + r + '|' + h + '|' + (seg || 24), () => { const g = new THREE.CylinderGeometry(r, r, h, seg || 24); g.translate(0, h / 2, 0); return g; });
+  const sphereGeo = (r, half) => cached('sph|' + r + '|' + !!half, () => new THREE.SphereGeometry(r, 18, half ? 8 : 14, 0, Math.PI * 2, 0, half ? Math.PI / 2 : Math.PI));
+  function rrShape(w, h, r) {
+    const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+    s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+    s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+    return s;
   }
-  function buildBlockGroup(b) {
-    const g = new THREE.Group(), w = b.w - GAP, d = b.h - GAP, kind = itemOf(b), top = heightOf(b), col = colorOf(b);
-    let body;
-    if (kind === 'divider') {
-      body = new THREE.Mesh(roundedBox(w, top, d, 0.07, 2), M.obstacle);
-      addDecal(g, obstacleTex(), w - 0.14, d - 0.14, top);
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addMesh(g, studGeo(0.045, 0.03), M.metal, sx * (w / 2 - 0.1), top - 0.005, sz * (d / 2 - 0.1));
-    } else if (kind === 'perfume' || kind === 'joker') {
-      const bw = w * 0.84, bd = d * 0.84;
-      body = new THREE.Mesh(roundedBox(bw, top, bd, 0.14, 3), glass(kind === 'joker' ? '#FFF6E8' : lighten(col, 0.12)));
-      addMesh(g, cylGeo(0.13, 0.05), M.gold, 0, top - 0.01, 0);
-      addMesh(g, roundedBox(0.22, 0.15, 0.22, 0.06, 2), kind === 'joker' ? M.gold : plastic('#20263A'), 0, top + 0.035, 0);
-      if (kind === 'joker') addDecal(g, sparkleTex(), bw - 0.24, bd - 0.24, top);
-    } else if (kind === 'towel') {
-      const r = 0.19;
-      body = new THREE.Mesh(roundedBox(w, top, d, r, 3), fabric(col));
-      const dw = w - 2 * r + 0.06, dd = d - 2 * r + 0.06;
-      addDecal(g, towelTex(dw, dd, !!b.compressed), dw, dd, top);
-    } else if (kind === 'passport') {
-      body = new THREE.Mesh(roundedBox(w, top, d, 0.08, 3), leather(col));
-      addDecal(g, passportTex(w - 0.12, d - 0.12), w - 0.12, d - 0.12, top);
-    } else if (kind === 'console') {
-      body = new THREE.Mesh(roundedBox(w, top, d, 0.13, 3), plastic(col));
-      addDecal(g, consoleTex(w - 0.16, d - 0.16), w - 0.16, d - 0.16, top);
-    } else if (kind === 'kit') {
-      body = new THREE.Mesh(roundedBox(w, top, d, 0.14, 3), plastic(col));
-      addDecal(g, kitTex(w - 0.16, d - 0.16), w - 0.16, d - 0.16, top);
-      const hr = Math.min(w, d) * 0.22;
-      const handle = addMesh(g, new THREE.TorusGeometry(hr, 0.045, 8, 20, Math.PI), M.rubber, 0, top - 0.01, -d / 2 + 0.24);
-      if (d > w) handle.rotation.y = Math.PI / 2, handle.position.set(-w / 2 + 0.24, top - 0.01, 0);
-    } else if (kind === 'organizer') {
-      body = new THREE.Mesh(roundedBox(w, top, d, 0.2, 3), fabric(col));
-      addDecal(g, organizerTex(w - 0.26, d - 0.26), w - 0.26, d - 0.26, top);
-      addMesh(g, roundedBox(0.1, 0.05, 0.2, 0.025, 2), M.metal, -w / 2 + 0.28, top - 0.01, -d / 2 + 0.3);
-    } else if (kind === 'jewelry') {
-      body = new THREE.Mesh(roundedBox(w, top, d, 0.12, 3), plastic(col));
-      addDecal(g, jewelTex(w - 0.16, d - 0.16), w - 0.16, d - 0.16, top);
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addMesh(g, studGeo(0.085, 0.12), M.gold, sx * (w / 2 - 0.14), top - 0.006, sz * (d / 2 - 0.14));
-      if (b.capped) {
-        const capG = new THREE.Group(); capG.name = 'cap';
-        const lid = new THREE.Mesh(roundedBox(w - 0.02, H_CAP, d - 0.02, 0.08, 2), M.lidGlass);
-        lid.userData.blockId = b.id; lid.renderOrder = 4; capG.add(lid);
-        const frame = addDecal(capG, lidTex(w - 0.06, d - 0.06), w - 0.06, d - 0.06, H_CAP); frame.renderOrder = 5;
-        addMesh(capG, roundedBox(0.26, 0.1, 0.06, 0.02, 2), M.gold, 0, 0.03, d / 2 - 0.02);
-        capG.position.y = top - 0.01; g.add(capG);
-      }
-    } else {
-      body = new THREE.Mesh(roundedBox(w, top, d, 0.1, 3), plastic(col));
+  /* rounded-rectangle ring extruded upward (frames, rims) — sits on y = 0 */
+  function ringGeo(ow, od, or, iw, id, ir, depth, bev) {
+    return cached(['ring', ow, od, or, iw, id, ir, depth, bev].map(v => typeof v === 'number' ? v.toFixed(3) : v).join('|'), () => {
+      const s = rrShape(ow - 2 * bev, od - 2 * bev, Math.max(0.01, or - bev));
+      s.holes.push(rrShape(iw + 2 * bev, id + 2 * bev, ir + bev));
+      const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(0.005, depth - 2 * bev), bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 10 });
+      g.rotateX(-Math.PI / 2); g.translate(0, bev, 0);
+      return g;
+    });
+  }
+  const crossGeo = (a, t, depth) => cached(['cross', a, t, depth].join('|'), () => {
+    const s = new THREE.Shape();
+    s.moveTo(-t, -a); s.lineTo(t, -a); s.lineTo(t, -t); s.lineTo(a, -t); s.lineTo(a, t); s.lineTo(t, t); s.lineTo(t, a);
+    s.lineTo(-t, a); s.lineTo(-t, t); s.lineTo(-a, t); s.lineTo(-a, -t); s.lineTo(-t, -t); s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 2, curveSegments: 2 });
+    g.rotateX(-Math.PI / 2); return g;
+  });
+  function rollGeo(r, len, open) {
+    return cached(['roll', r, len, !!open].map(v => typeof v === 'number' ? v.toFixed(3) : v).join('|'), () => {
+      const g = new THREE.CylinderGeometry(r, r, len, 40, 1, !!open); g.rotateZ(Math.PI / 2); return g;
+    });
+  }
+  /* box materials by face: BoxGeometry groups are +x, -x, +y, -y, +z, -z */
+  function withMap(base, tex) {
+    const k = base.uuid + '|' + tex.uuid;
+    if (!matCache.has(k)) { const m = base.clone(); m.map = tex; m.color.set('#ffffff'); matCache.set(k, m); }
+    return matCache.get(k);
+  }
+  function faceMats(base, top, endSide, longSide) {
+    const t = top ? withMap(base, top) : base, e = endSide ? withMap(base, endSide) : base, l = longSide ? withMap(base, longSide) : base;
+    return [e, e, t, base, l, l];
+  }
+
+  function buildPerfume(L, S, joker) {
+    const g = new THREE.Group(), bw = Math.min(L, S) * 0.86, bh = 0.5;
+    addMesh(g, roundedBox(bw - 0.12, bh - 0.1, bw - 0.12, 0.08, 2), joker ? M.jokerCore : M.perfumeCore, 0, 0.04, 0);
+    const shell = addMesh(g, roundedBox(bw, bh, bw, 0.13, 3), joker ? M.jokerGlass : M.perfumeGlass, 0, 0, 0, false);
+    shell.renderOrder = 3;
+    addMesh(g, cylGeo(0.12, 0.085), M.gold, 0, bh - 0.005, 0);
+    addMesh(g, studGeo(0.096, 0.13), joker ? M.gold : M.capDark, 0, bh + 0.075, 0);
+    if (joker) addDecal(g, sparkleTex(), bw - 0.1, bw - 0.1, bh).renderOrder = 4;
+    return g;
+  }
+  function buildPassport(L, S) {
+    const g = new THREE.Group(), h = 0.34;
+    addMesh(g, roundedBox(L, h, S, 0.12, 3), faceMats(M.leather, passportTop(L, S), passportSide(S, h), passportSide(L, h)));
+    return g;
+  }
+  function buildConsole(L, S) {
+    const g = new THREE.Group(), h = 0.3;
+    addMesh(g, roundedBox(L, h, S, 0.12, 3), faceMats(M.plasticOrange, consoleTop(L, S), consoleSide(S, h, true), consoleSide(L, h, false)));
+    const long = L > S * 1.6, sw = long ? Math.min(0.96, L * 0.34) : L * 0.6, sh = S * 0.62;
+    addMesh(g, roundedBox(sw + 0.06, 0.02, sh + 0.06, 0.04, 2), M.bezel, 0, h - 0.012, 0, false);
+    addMesh(g, roundedBox(sw, 0.03, sh, 0.035, 2), M.screen, 0, h - 0.008, 0, false);
+    if (!long) return g;
+    const px = L / 2 - (L / 2 - sw / 2) * 0.52 - 0.02;
+    addMesh(g, crossGeo(0.1, 0.034, 0.03), M.dpad, -px, h - 0.004, 0.02);
+    addMesh(g, studGeo(0.052, 0.035), M.button, px - 0.07, h - 0.006, -0.1);
+    addMesh(g, studGeo(0.052, 0.035), M.button, px + 0.07, h - 0.006, 0.06);
+    return g;
+  }
+  function buildKit(L, S) {
+    const g = new THREE.Group(), h = 0.52;
+    addMesh(g, roundedBox(L, h, S, 0.15, 3), faceMats(M.plasticCoral, kitTop(L, S), kitSide(S, h), kitSide(L, h)));
+    const handle = addMesh(g, cached('kitHandle', () => new THREE.TorusGeometry(0.16, 0.034, 10, 22, Math.PI)), M.rubber, -L * 0.22, h * 0.42, S / 2 - 0.035);
+    handle.rotation.x = Math.PI / 2; handle.scale.set(1, 0.42, 1);
+    return g;
+  }
+  function buildOrganizer(L, S) {
+    const g = new THREE.Group(), h = 0.6;
+    addMesh(g, roundedBox(L, h, S, 0.2, 3), faceMats(M.fabricTeal, organizerTop(L, S), organizerSide(S, h), organizerSide(L, h)));
+    for (const dx of [0, 0.075]) {
+      const tab = addMesh(g, roundedBox(0.05, 0.13, 0.018, 0.012, 2), M.metal, L * 0.2 + dx, h - 0.2, S / 2 + 0.002);
+      tab.rotation.z = dx ? -0.12 : 0.1;
+      addMesh(g, roundedBox(0.06, 0.03, 0.03, 0.01, 2), M.metal, L * 0.2 + dx, h - 0.08, S / 2 - 0.005, false);
     }
+    return g;
+  }
+  function buildTowel(L, S, compressed) {
+    const g = new THREE.Group(), R = S * 0.5 - 0.015, fr = 0.07, len = L - 2 * fr, ky = compressed ? 0.86 : 0.8;
+    const roll = addMesh(g, rollGeo(R, len), [withMap(M.fleece, towelSkin(len, compressed)), withMap(M.fleece, towelEnd()), withMap(M.fleece, towelEnd())], 0, R * ky, 0);
+    roll.scale.y = ky;
+    const bx = len * 0.08, top = 2 * R * ky;
+    const belt = addMesh(g, rollGeo(R * 1.035, 0.17, true), M.belt, bx, R * ky, 0); belt.scale.y = ky;
+    addMesh(g, ringGeo(0.16, 0.2, 0.03, 0.1, 0.13, 0.015, 0.03, 0.008), M.gold, bx, top - 0.004, -0.02);
+    addMesh(g, roundedBox(0.012, 0.012, 0.15, 0.005, 1), M.gold, bx, top + 0.018, -0.02, false);
+    const tongue = addMesh(g, roundedBox(0.15, 0.014, 0.16, 0.006, 1), M.belt, bx, top - 0.012, 0.13);
+    tongue.rotation.x = 0.32;
+    for (const s of [-1, 1]) for (let k = 0; k < 5; k++) {
+      const a = Math.PI * (0.26 + k * 0.12);
+      const t = addMesh(g, roundedBox(0.06, 0.028, 0.024, 0.01, 1), M.fringe, s * (len / 2 + 0.03), R * ky + Math.sin(a) * R * ky * 0.92, Math.cos(a) * R * 0.92, false);
+      t.rotation.z = s * (0.25 + (k % 3) * 0.12); t.rotation.y = (k % 2 ? 0.2 : -0.15);
+    }
+    return g;
+  }
+  function buildJewelry(L, S, capped, id) {
+    const g = new THREE.Group(), rim = 0.16, bev = 0.03, Hj = 0.42, floorY = 0.15;
+    const iw = L - 2 * rim, id_ = S - 2 * rim;
+    addMesh(g, ringGeo(L, S, 0.16, iw, id_, 0.07, Hj, bev), M.plasticPurple);
+    addMesh(g, roundedBox(iw + 0.04, floorY, id_ + 0.04, 0.03, 1), M.velvet, 0, 0, 0, false);
+    addMesh(g, roundedBox(iw, 0.1, 0.035, 0.012, 1), M.velvetDark, 0, floorY, 0);
+    addMesh(g, roundedBox(0.035, 0.1, id_, 0.012, 1), M.velvetDark, 0, floorY, 0);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addMesh(g, sphereGeo(0.055, true), M.gold, sx * (L / 2 - rim / 2), Hj - 0.005, sz * (S / 2 - rim / 2));
+    const q = iw / 4, f = floorY;
+    // ring with a blue stone (far left)
+    const ring = addMesh(g, cached('ringBand', () => new THREE.TorusGeometry(0.075, 0.019, 10, 26)), M.gold, -q, f + 0.09, -q);
+    ring.rotation.set(-0.95, 0.5, 0);
+    const gem = addMesh(g, cached('gem', () => new THREE.OctahedronGeometry(0.04)), M.gem, -q + 0.035, f + 0.16, -q - 0.06); gem.scale.y = 0.7;
+    // pearl bracelet (far right)
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; addMesh(g, sphereGeo(0.026), M.pearl, q + Math.cos(a) * 0.13, f + 0.026, -q + Math.sin(a) * 0.13); }
+    // drop earrings (near left)
+    for (const ox of [-0.075, 0.075]) {
+      const drop = addMesh(g, sphereGeo(0.042), M.earring, -q + ox, f + 0.03, q + 0.03); drop.scale.set(1, 0.55, 1.35);
+      const hook = addMesh(g, cached('hook', () => new THREE.TorusGeometry(0.03, 0.007, 6, 14, Math.PI * 1.3)), M.gold, -q + ox, f + 0.03, q - 0.06, false);
+      hook.rotation.x = -Math.PI / 2;
+    }
+    // watch (near right)
+    const wg = new THREE.Group(); wg.position.set(q, f, q); wg.rotation.y = 0.45; g.add(wg);
+    for (const s of [-1, 1]) addMesh(wg, roundedBox(0.075, 0.016, 0.12, 0.008, 1), M.strap, 0, 0, s * 0.12);
+    addMesh(wg, cylGeo(0.088, 0.035, 28), M.watchFace, 0, 0.012, 0);
+    const bez = addMesh(wg, cached('bezel', () => new THREE.TorusGeometry(0.088, 0.014, 8, 28)), M.roseGold, 0, 0.047, 0); bez.rotation.x = Math.PI / 2;
+    addMesh(wg, roundedBox(0.008, 0.006, 0.055, 0.002, 1), M.capDark, 0, 0.048, -0.022, false);
+    const minute = addMesh(wg, roundedBox(0.008, 0.006, 0.07, 0.002, 1), M.capDark, 0.02, 0.05, 0.01, false); minute.rotation.y = 1.1;
+    if (capped) {
+      const cap = new THREE.Group(); cap.name = 'cap'; cap.position.y = Hj - 0.004; g.add(cap);
+      addMesh(cap, ringGeo(L - 0.04, S - 0.04, 0.17, L - 0.2, S - 0.2, 0.09, 0.055, 0.014), M.gold);
+      const pane = addMesh(cap, roundedBox(L - 0.16, 0.02, S - 0.16, 0.06, 1), M.lidGlass, 0, 0.015, 0, false); pane.renderOrder = 4;
+      addMesh(cap, cylGeo(0.028, 0.06), M.gold, 0, 0.03, 0);
+      addMesh(cap, studGeo(0.075, 0.035), M.gold, 0, 0.085, 0);
+    }
+    return g;
+  }
+  function buildDivider(L, S) {
+    const g = new THREE.Group();
+    addMesh(g, roundedBox(L, 0.2, S, 0.07, 2), M.slate);
+    const uw = L - 0.05, ud = S - 0.05;
+    addMesh(g, roundedBox(uw, 0.22, ud, 0.08, 2), faceMats(M.slate, dividerTop(uw, ud), null, null), 0, 0.215, 0);
+    const top = 0.435;
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addMesh(g, sphereGeo(0.038, true), M.metal, sx * (uw / 2 - 0.1), top - 0.004, sz * (ud / 2 - 0.1));
+    addMesh(g, roundedBox(0.2, 0.045, 0.16, 0.03, 2), M.lockBody, 0, top - 0.004, 0.035);
+    const shackle = addMesh(g, cached('shackle', () => new THREE.TorusGeometry(0.058, 0.018, 8, 18, Math.PI)), M.lockBody, 0, top + 0.02, -0.04);
+    shackle.rotation.x = -Math.PI / 2;
+    addMesh(g, cylGeo(0.022, 0.008, 16), M.hazard, 0, top + 0.04, 0.02, false);
+    addMesh(g, roundedBox(0.016, 0.008, 0.04, 0.004, 1), M.hazard, 0, top + 0.04, 0.05, false);
+    return g;
+  }
+
+  function buildBlockGroup(b) {
+    const g = new THREE.Group(), kind = itemOf(b), top = heightOf(b);
+    const vertical = b.h > b.w, L = (vertical ? b.h : b.w) - GAP, S = (vertical ? b.w : b.h) - GAP;
+    let inner;
+    if (kind === 'divider') inner = buildDivider(L, S);
+    else if (kind === 'perfume' || kind === 'joker') inner = buildPerfume(L, S, kind === 'joker');
+    else if (kind === 'towel') inner = buildTowel(L, S, !!b.compressed);
+    else if (kind === 'passport') inner = buildPassport(L, S);
+    else if (kind === 'console') inner = buildConsole(L, S);
+    else if (kind === 'kit') inner = buildKit(L, S);
+    else if (kind === 'organizer') inner = buildOrganizer(L, S);
+    else if (kind === 'jewelry') inner = buildJewelry(L, S, !!b.capped, b.id);
+    else { inner = new THREE.Group(); addMesh(inner, roundedBox(L, top, S, 0.1, 3), plastic(colorOf(b))); }
+    if (vertical) inner.rotation.y = Math.PI / 2;
+    g.add(inner);
     if (b.axis === 'h' || b.axis === 'v') {
       const long = (b.axis === 'h' ? b.w : b.h) - 0.42;
       const a = new THREE.Mesh(arrowGeo(Math.max(0.55, long)), M.arrow);
-      a.position.y = top + 0.006; if (b.axis === 'v') a.rotation.y = Math.PI / 2; a.castShadow = true; a.renderOrder = 3; g.add(a);
+      a.position.y = top + 0.006; if (b.axis === 'v') a.rotation.y = Math.PI / 2; a.castShadow = true; a.renderOrder = 5; g.add(a);
     }
-    body.castShadow = true; body.receiveShadow = true; body.userData.blockId = b.id;
-    g.add(body);
-    g.userData.body = body;
+    g.traverse(o => { if (o.isMesh) o.userData.blockId = b.id; });
     return g;
   }
   function ensureMesh(b) {
@@ -654,35 +872,30 @@
     soundOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
     soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'
   };
-  const GLYPH = {
-    perfume: '<path d="M8 10.5a3 3 0 0 1 3-3h2a3 3 0 0 1 3 3V18a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/><path d="M10.5 7.5V5h3v2.5M12 5V3.2"/>',
-    joker: '<path d="M8 10.5a3 3 0 0 1 3-3h2a3 3 0 0 1 3 3V18a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/><path d="M10.5 7.5V5h3v2.5"/><path d="M12 11.5l.9 1.8 1.9.3-1.4 1.3.4 1.9-1.8-1-1.8 1 .4-1.9-1.4-1.3 1.9-.3z" fill="currentColor" stroke="none"/>',
-    passport: '<circle cx="12" cy="12" r="6.5"/><ellipse cx="12" cy="12" rx="2.8" ry="6.5"/><path d="M5.5 12h13M6.6 8.8h10.8M6.6 15.2h10.8"/>',
-    console: '<rect x="8" y="7.5" width="8" height="9" rx="1.6"/><path d="M2.8 12h3.4M4.5 10.3v3.4"/><circle cx="19" cy="10.8" r=".9" fill="currentColor"/><circle cx="20.6" cy="13.2" r=".9" fill="currentColor"/>',
-    towel: '<rect x="9.8" y="3" width="4.4" height="18" rx="1"/><rect x="10.6" y="9.8" width="2.8" height="4.4" rx=".6"/><path d="M4 9l2 3-2 3M20 9l-2 3 2 3"/>',
-    kit: '<circle cx="12" cy="12" r="6.6" fill="#fff" stroke="none"/><path d="M12 8.6v6.8M8.6 12h6.8" stroke="#E8414B" stroke-width="2.6"/>',
-    jewelry: '<path d="M7.5 9.5 10 6.5h4l2.5 3L12 18z"/><path d="M7.5 9.5h9M10 6.5l2 3 2-3M12 9.5V18"/>',
-    organizer: '<rect x="4" y="6.5" width="16" height="11" rx="2.5" stroke-dasharray="2.2 1.8"/><path d="M7 9.5h10M7 12h10M7 14.5h10" opacity=".7"/>',
-    lid: '<rect x="5" y="7" width="14" height="10" rx="2"/><path d="M8 13l3-3M9.5 15l4.5-4.5" opacity=".8"/>'
-  };
-  function itemLabel(it) {
+  function itemLabel(it, spoken) {
     const k = itemOf(it), name = ITEM_NAME[k] || (it.w + '×' + it.h);
-    if (it.axis === 'h') return '↔ ' + name;
-    if (it.axis === 'v') return '↕ ' + name;
-    return name;
+    if (!spoken) return name;
+    const lock = it.axis === 'h' ? ', sadece yatay kayar' : it.axis === 'v' ? ', sadece dikey kayar' : '';
+    return name + ' ' + it.w + '×' + it.h + lock;
   }
+  /* small footprint grid: tells the player the next item's size and orientation */
+  function footprintSVG(it, cell) {
+    const k = itemOf(it), w = it.w, h = it.h, gap = 2;
+    const W = w * cell + (w - 1) * gap, H = h * cell + (h - 1) * gap;
+    let rects = '';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const squeeze = k === 'towel' && ((w > h && x === w - 1) || (h > w && y === h - 1));
+      rects += `<rect x="${x * (cell + gap) + 0.6}" y="${y * (cell + gap) + 0.6}" width="${cell - 1.2}" height="${cell - 1.2}" rx="1.6"${squeeze ? ' class="soft"' : k === 'lid' ? ' class="lid"' : ''}/>`;
+    }
+    return `<svg class="fp" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${rects}</svg>`;
+  }
+  const iconOf = k => (window.PJ_ICONS || {})[k === 'joker' ? 'perfume' : k] || '';
   function miniHTML(it, box) {
-    const k = itemOf(it);
-    const c = Math.max(9, Math.floor(Math.min(box / it.w, (box - 8) / it.h, it.w * it.h === 1 ? 34 : 21)));
-    let col;
-    if (k === 'joker') col = '#FFF1D6';
-    else if (k === 'lid') col = '#CFEFFF';
-    else if (k === 'towel') col = FABRIC[((it.color % FABRIC.length) + FABRIC.length) % FABRIC.length];
-    else col = plasticHex(it.color);
-    const locked = it.axis === 'h' || it.axis === 'v';
-    const vert = it.h > it.w ? ' vert' : '';
-    const inner = locked ? SVG[it.axis] : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${GLYPH[k] || ''}</svg>`;
-    return `<span class="mini it-${k}${locked ? ' axis' : ''}${vert}" style="--w:${it.w};--h:${it.h};--c:${c}px;--col:${col}">${inner}</span>`;
+    const k = itemOf(it), locked = it.axis === 'h' || it.axis === 'v';
+    return `<span class="ico it-${k}" style="--box:${box}px"><img src="${iconOf(k)}" alt="" draggable="false">` +
+      (k === 'joker' ? '<span class="joker-star" aria-hidden="true">★</span>' : '') + '</span>' +
+      (locked ? `<span class="axis-badge" aria-hidden="true">${it.axis === 'h' ? '↔' : '↕'}</span>` : '') +
+      footprintSVG(it, box > 52 ? 7 : 6);
   }
   let lastHeadId = null;
   function renderQueue() {
@@ -692,7 +905,7 @@
     if (!items.length) { el.belt.innerHTML = '<span class="empty-belt">Kuyruk boş</span>'; return; }
     el.belt.innerHTML = items.map((it, i) => {
       const head = i === 0;
-      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 64 : 52)}<span class="tray-lbl">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
+      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it, true) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 62 : 48)}<span class="tray-lbl">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
     }).join('') + (rest > 0 ? `<span class="more" aria-label="${rest} eşya daha">+${rest}</span>` : '');
     if (shifted && !REDUCED) { el.belt.classList.remove('roll'); void el.belt.offsetWidth; el.belt.classList.add('roll'); }
     const ht = $('#headTray');
@@ -1173,7 +1386,7 @@
       grp.add(body); grp.add(mark); root.add(grp);
       ghost = { group: grp, key, body, mark };
     }
-    const col = item.type === 'sock' ? '#FFF3D6' : item.type === 'cap' ? lighten(plasticHex(item.color), 0.38) : item.soft ? FABRIC[item.color % FABRIC.length] : plasticHex(item.color);
+    const col = colorOf(item);
     ghost.body.material.color.set(col).convertSRGBToLinear();
     ghost.body.material.opacity = snapped ? 0.55 : 0.32;
     ghost.mark.visible = !!snapped;
@@ -1551,6 +1764,8 @@
   /* ---------- boot ---------- */
   function start(data) {
     setSoundIcon();
+    $('#helpItems').innerHTML = ['perfume', 'passport', 'console', 'towel', 'kit', 'organizer', 'jewelry', 'lid', 'divider']
+      .map(k => `<img src="${iconOf(k)}" alt="" title="${ITEM_NAME[k]}">`).join('');
     let idx = 0;
     if (data && typeof data.idx === 'number') idx = data.idx;
     else { try { idx = parseInt(localStorage.getItem('pj-level') || '0', 10) || 0; } catch (e) { idx = 0; } }
