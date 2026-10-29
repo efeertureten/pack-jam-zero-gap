@@ -695,8 +695,17 @@
     }
     return g;
   }
+  const JEWEL_H = 0.42;
+  function buildLidGroup(L, S) {
+    const cap = new THREE.Group();
+    addMesh(cap, ringGeo(L - 0.04, S - 0.04, 0.17, L - 0.2, S - 0.2, 0.09, 0.055, 0.014), M.gold);
+    const pane = addMesh(cap, roundedBox(L - 0.16, 0.02, S - 0.16, 0.06, 1), M.lidGlass, 0, 0.015, 0, false); pane.renderOrder = 4;
+    addMesh(cap, cylGeo(0.028, 0.06), M.gold, 0, 0.03, 0);
+    addMesh(cap, studGeo(0.075, 0.035), M.gold, 0, 0.085, 0);
+    return cap;
+  }
   function buildJewelry(L, S, capped, id) {
-    const g = new THREE.Group(), rim = 0.16, bev = 0.03, Hj = 0.42, floorY = 0.15;
+    const g = new THREE.Group(), rim = 0.16, bev = 0.03, Hj = JEWEL_H, floorY = 0.15;
     const iw = L - 2 * rim, id_ = S - 2 * rim;
     addMesh(g, ringGeo(L, S, 0.16, iw, id_, 0.07, Hj, bev), M.plasticPurple);
     addMesh(g, roundedBox(iw + 0.04, floorY, id_ + 0.04, 0.03, 1), M.velvet, 0, 0, 0, false);
@@ -723,13 +732,7 @@
     const bez = addMesh(wg, cached('bezel', () => new THREE.TorusGeometry(0.088, 0.014, 8, 28)), M.roseGold, 0, 0.047, 0); bez.rotation.x = Math.PI / 2;
     addMesh(wg, roundedBox(0.008, 0.006, 0.055, 0.002, 1), M.capDark, 0, 0.048, -0.022, false);
     const minute = addMesh(wg, roundedBox(0.008, 0.006, 0.07, 0.002, 1), M.capDark, 0.02, 0.05, 0.01, false); minute.rotation.y = 1.1;
-    if (capped) {
-      const cap = new THREE.Group(); cap.name = 'cap'; cap.position.y = Hj - 0.004; g.add(cap);
-      addMesh(cap, ringGeo(L - 0.04, S - 0.04, 0.17, L - 0.2, S - 0.2, 0.09, 0.055, 0.014), M.gold);
-      const pane = addMesh(cap, roundedBox(L - 0.16, 0.02, S - 0.16, 0.06, 1), M.lidGlass, 0, 0.015, 0, false); pane.renderOrder = 4;
-      addMesh(cap, cylGeo(0.028, 0.06), M.gold, 0, 0.03, 0);
-      addMesh(cap, studGeo(0.075, 0.035), M.gold, 0, 0.085, 0);
-    }
+    if (capped) { const cap = buildLidGroup(L, S); cap.name = 'cap'; cap.position.y = Hj - 0.004; g.add(cap); }
     return g;
   }
   function buildDivider(L, S) {
@@ -857,7 +860,8 @@
     belt: $('#belt'), hint: $('#hint'), fillBar: $('#fillBar'), fillPct: $('#fillPct'), fillCells: $('#fillCells'),
     nUndo: $('#nUndo'), nVac: $('#nVac'), nShake: $('#nShake'), bUndo: $('#bUndo'), bVac: $('#bVac'), bShake: $('#bShake'),
     toast: $('#toast'), winOv: $('#winOv'), failOv: $('#failOv'), helpOv: $('#helpOv'), shakePick: $('#shakePick'),
-    hudTop: $('#hudTop'), hudBottom: $('#hudBottom'), btnSound: $('#btnSound'), fillTarget: $('#fillTarget'), gapChip: $('#gapChip')
+    hudTop: $('#hudTop'), hudBottom: $('#hudBottom'), btnSound: $('#btnSound'), fillTarget: $('#fillTarget'), gapChip: $('#gapChip'),
+    queueOv: $('#queueOv'), queueGrid: $('#queueGrid'), btnQueue: $('#btnQueue'), qCount: $('#qCount')
   };
   let toastTimer = 0;
   function toast(msg, ms) {
@@ -895,25 +899,56 @@
     return `<span class="ico it-${k}" style="--box:${box}px"><img src="${iconOf(k)}" alt="" draggable="false">` +
       (k === 'joker' ? '<span class="joker-star" aria-hidden="true">★</span>' : '') + '</span>' +
       (locked ? `<span class="axis-badge" aria-hidden="true">${it.axis === 'h' ? '↔' : '↕'}</span>` : '') +
-      footprintSVG(it, box > 52 ? 7 : 6);
+      footprintSVG(it, box > 52 ? 7 : box > 40 ? 6 : 4.5);
   }
   let lastHeadId = null;
   function renderQueue() {
-    const items = G.queue.slice(0, 3), rest = G.queue.length - items.length;
-    const shifted = lastHeadId !== null && items.length && items[0].id !== lastHeadId;
-    lastHeadId = items.length ? items[0].id : null;
-    if (!items.length) { el.belt.innerHTML = '<span class="empty-belt">Kuyruk boş</span>'; return; }
-    el.belt.innerHTML = items.map((it, i) => {
-      const head = i === 0;
-      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it, true) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 62 : 48)}<span class="tray-lbl${itemLabel(it).length > 10 ? ' long' : ''}">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
-    }).join('') + (rest > 0 ? `<span class="more" aria-label="${rest} eşya daha">+${rest}</span>` : '');
+    const all = G.queue, head = all[0];
+    const shifted = lastHeadId !== null && !!head && head.id !== lastHeadId;
+    lastHeadId = head ? head.id : null;
+    if (lane && lane.item !== head) cancelLane();
+    el.qCount.textContent = all.length;
+    el.btnQueue.disabled = !all.length;
+    if (!el.queueOv.hidden) renderQueueSheet();
+    if (!all.length) { el.belt.innerHTML = '<span class="empty-belt">Kuyruk boş</span>'; updateBeltFade(); return; }
+    const keep = el.belt.scrollLeft;
+    el.belt.innerHTML = all.map((it, i) => {
+      const isHead = i === 0, near = i < 3, name = itemLabel(it);
+      const cls = 'tray' + (isHead ? ' head' : near ? '' : ' far') + (isHead && G.selected ? ' selected' : '') + (shifted && !REDUCED ? ' enter' : '');
+      const attrs = isHead ? ` id="headTray" aria-label="Sıradaki eşya: ${itemLabel(it, true)}"` : ` aria-label="${i + 1}. sıra: ${itemLabel(it, true)}"`;
+      const lbl = near ? `<span class="tray-lbl${name.length > 10 ? ' long' : ''}">${name}</span>` : '';
+      const num = isHead ? '' : `<span class="tray-num">${i + 1}</span>`;
+      return `<${isHead ? 'button type="button"' : 'div'} class="${cls}"${attrs} style="--from:${isHead ? 86 : 90}px">${miniHTML(it, isHead ? 62 : near ? 48 : 34)}${lbl}${num}</${isHead ? 'button' : 'div'}>`;
+    }).join('');
+    if (shifted) el.belt.scrollTo({ left: 0, behavior: REDUCED ? 'auto' : 'smooth' }); else el.belt.scrollLeft = keep;
     if (shifted && !REDUCED) { el.belt.classList.remove('roll'); void el.belt.offsetWidth; el.belt.classList.add('roll'); }
     const ht = $('#headTray');
     if (ht) {
       ht.addEventListener('pointerdown', onTrayDown);
       ht.addEventListener('click', e => { if (e.detail === 0 && G.queue[0] && !G.busy && !G.won) onTrayTap(G.queue[0]); });
     }
+    updateBeltFade();
   }
+  function updateBeltFade() {
+    const b = el.belt, max = b.scrollWidth - b.clientWidth;
+    b.classList.toggle('fade-l', b.scrollLeft > 4);
+    b.classList.toggle('fade-r', b.scrollLeft < max - 4);
+  }
+  function renderQueueSheet() {
+    const all = G.queue;
+    $('#queueSub').textContent = all.length ? `${all.length} eşya bu sırayla gelecek. İlk kutu şu an sırada.` : 'Kuyruk boş.';
+    el.queueGrid.innerHTML = all.map((it, i) => {
+      const squeeze = it.soft ? ` → ${it.w > it.h ? (it.w - 1) + '×' + it.h : it.w + '×' + (it.h - 1)}` : '';
+      return `<li class="q-item${i === 0 ? ' now' : ''}"><span class="q-n">${i === 0 ? 'SIRADA' : i + 1}</span>${miniHTML(it, 46)}<span class="q-name">${itemLabel(it)}</span><span class="q-size">${it.w}×${it.h}${squeeze}</span></li>`;
+    }).join('');
+  }
+  function openQueueSheet() {
+    if (!G.queue.length) return;
+    stopTut(true);
+    renderQueueSheet(); el.queueOv.hidden = false; sfx.pop();
+    $('#queueClose').focus({ preventScroll: true });
+  }
+  function closeQueueSheet() { el.queueOv.hidden = true; }
   function hintText() {
     const head = G.queue[0];
     if (G.mode === 'vacuum') return 'Küçültülecek bloğa dokun';
@@ -1079,13 +1114,6 @@
     toast(msg); sfx.deny(); haptic([8, 40, 8]);
     const v = gateViews[gi]; if (v) v.flash = 1;
   }
-  function tryEnterAt(gi, along) {
-    const item = G.queue[0];
-    if (!item || item.type !== 'block') return;
-    const opt = bestOption(item, G.st.gates[gi], along);
-    if (!opt) { rejectGate(gi, item); return; }
-    doEnter(item, gi, opt);
-  }
   function outsideCenter(b, side) {
     const p = blockCenter(b), off = WALL_T + 0.8;
     if (side === 'left') p.x = -G.st.W / 2 - off - b.w / 2;
@@ -1098,6 +1126,7 @@
     const gate = G.st.gates[gi];
     pushUndo();
     G.queue.shift(); G.selected = false;
+    markTut('gate'); if (item.axis === 'h' || item.axis === 'v') markTut('axis');
     const b = E.applyEnter(G.st, item, gate, opt);
     G.moves++;
     const m = ensureMesh(b), start = outsideCenter(b, gate.side), end = blockCenter(b);
@@ -1142,7 +1171,7 @@
       toast('Şeffaf kapak için önce takı kutusu yerine oturmalı: hiçbir yöne kayamayacak hale gelsin.', 3000);
       return;
     }
-    pushUndo(); G.queue.shift(); b.capped = true; G.moves++;
+    pushUndo(); G.queue.shift(); b.capped = true; G.moves++; markTut('lid');
     const m = ensureMesh(b), cap = m.group.getObjectByName('cap');
     renderQueue(); updateHUD(); hideGhost();
     if (!cap || REDUCED) { sfx.snap(); afterAction(); if (onDone) onDone(); return; }
@@ -1167,7 +1196,7 @@
     const c = E.compressInfo(G.st, probe, dir, E.occ(G.st, b.id));
     if (!c) return false;
     pushUndo();
-    Object.assign(b, c); b.compressed = true; G.moves++;
+    Object.assign(b, c); b.compressed = true; G.moves++; markTut('towel');
     const m = ensureMesh(b), t = blockCenter(b), ax = b.softAxis;
     m.group.position.set(t.x, 0, t.z);
     if (!REDUCED) {
@@ -1255,6 +1284,7 @@
     if (G.won) return;
     const full = E.filledCount(G.st) === G.st.W * G.st.H;
     if (G.queue.length === 0) { winSequence(); return; }
+    if (!tut.kind) scheduleTut(800);
     if (!E.anyActionPossible(G.st, G.queue)) {
       setTimeout(() => { if (!G.won && !G.busy && !E.anyActionPossible(G.st, G.queue)) openFail(full); }, 420);
     }
@@ -1332,7 +1362,7 @@
     if (d.done) return;
     const nx = Math.round(d.fx), ny = Math.round(d.fy);
     const changed = nx !== b.x || ny !== b.y;
-    if (changed) { pushUndo(); b.x = nx; b.y = ny; G.moves++; sfx.click(); haptic(6); }
+    if (changed) { pushUndo(); b.x = nx; b.y = ny; G.moves++; sfx.click(); haptic(6); markTut('slide'); if (b.axis === 'h' || b.axis === 'v') markTut('axis'); }
     const t = blockCenter(b);
     gsap.to(m.group.position, { x: t.x, z: t.z, y: 0, duration: 0.18, ease: 'back.out(2.2)' });
     gsap.to(m.group.scale, { x: 1, y: 1, z: 1, duration: 0.45, ease: 'elastic.out(1,0.45)' });
@@ -1346,8 +1376,10 @@
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('pointerdown', e => {
     sfx.unlock();
+    if (tut.kind) stopTut(true);
     if (G.won || G.busy || drag || qdrag) return;
     const gp = pointerGrid(e), head = G.queue[0], b = pickBlock(e);
+    if (lane && !lane.holding) { const g2 = pickGate(e); if (!g2 || g2.gi !== lane.gi || !head || head.type !== 'block') cancelLane(); }
     if (G.mode === 'vacuum') {
       if (b) tryVacuum(b); else { G.mode = 'idle'; updateHUD(); toast('Vakum iptal edildi.'); }
       return;
@@ -1358,7 +1390,7 @@
     if (head && head.type === 'sock' && onBoard) { placeSock(Math.floor(gp.gx), Math.floor(gp.gy)); return; }
     const gh = pickGate(e);
     if (gh) {
-      if (head && head.type === 'block') { tryEnterAt(gh.gi, gh.along); return; }
+      if (head && head.type === 'block') { gateDown(e, gh); return; }
       if (head && head.type === 'sock') { toast('Joker parfüm kapıdan girmez: boş bir kareye dokun.'); return; }
       if (head && head.type === 'cap') { toast('Şeffaf kapak takı kutusunun üstüne oturur: kutuya dokun.'); return; }
     }
@@ -1366,12 +1398,15 @@
   });
   canvas.addEventListener('pointermove', e => {
     if (drag && e.pointerId === drag.pid) { moveBlockDrag(pointerGrid(e)); return; }
-    if (e.pointerType === 'mouse' && !qdrag && !G.busy && !G.won) hoverPreview(e);
+    if (lane && lane.holding && e.pointerId === lane.pid) { laneMove(e); return; }
+    if (e.pointerType === 'mouse' && !qdrag && !lane && !G.busy && !G.won) hoverPreview(e);
   });
-  const endCanvas = e => { if (drag && e.pointerId === drag.pid) { try { canvas.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ } endBlockDrag(); } };
+  const endCanvas = e => {
+    if (lane && lane.holding && e.pointerId === lane.pid) { laneUp(e, e.type === 'pointercancel'); return; }
+    if (drag && e.pointerId === drag.pid) { try { canvas.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ } endBlockDrag(); } };
   canvas.addEventListener('pointerup', endCanvas);
   canvas.addEventListener('pointercancel', endCanvas);
-  canvas.addEventListener('pointerleave', () => { if (!qdrag && !drag) { hideGhost(); canvas.classList.remove('can-grab', 'can-tap'); } });
+  canvas.addEventListener('pointerleave', () => { if (!qdrag && !drag && !lane) { hideGhost(); canvas.classList.remove('can-grab', 'can-tap'); } });
 
   /* ---------- ghost preview ---------- */
   let ghost = null;
@@ -1415,12 +1450,359 @@
     hideGhost();
   }
 
+
+  /* ======================================================================
+     HOLOGRAMS — translucent copies of items (lane preview + ghost hand)
+     ====================================================================== */
+  const holoMats = new Map();
+  function holoMat(m) {
+    let h = holoMats.get(m.uuid);
+    if (!h) {
+      h = m.clone(); h.transparent = true; h.depthWrite = false;
+      h.userData.base = (m.transparent ? m.opacity : 1) * 0.58;
+      h.opacity = h.userData.base;
+      if (h.emissive) { h.emissive = new THREE.Color(0xffffff); h.emissiveIntensity = 0.16; }
+      holoMats.set(m.uuid, h);
+    }
+    return h;
+  }
+  function holoify(group) {
+    group.traverse(o => {
+      if (!o.isMesh) return;
+      o.material = Array.isArray(o.material) ? o.material.map(holoMat) : holoMat(o.material);
+      o.castShadow = false; o.receiveShadow = false; o.renderOrder = 7; o.userData.blockId = null;
+    });
+    return group;
+  }
+  function setHoloAlpha(k) { for (const h of holoMats.values()) h.opacity = h.userData.base * k; }
+  function itemBlock(item, x, y) {
+    return { id: -1, x: x || 0, y: y || 0, w: item.w, h: item.h, item: item.item, color: item.color, axis: item.axis || 'free',
+      soft: !!item.soft, softAxis: item.softAxis || null, compressed: !!item.compressed, base: !!item.base, capped: false, fixed: !!item.fixed, sock: !!item.sock };
+  }
+  const holoOf = b => holoify(buildBlockGroup(b));
+  const tv = new THREE.Vector3();
+  function toScreen(p, ar, cr) {
+    tv.copy(p); root.localToWorld(tv); tv.project(camera);
+    return { x: cr.left - ar.left + (tv.x + 1) / 2 * cr.width, y: cr.top - ar.top + (1 - tv.y) / 2 * cr.height };
+  }
+  /* root-local point over the gate module, in front of a lane */
+  function mouthPoint(gate, offset, cross, y) {
+    const c = sideCenter(gate.side, offset + cross / 2), out = OUT[gate.side];
+    return new THREE.Vector3(c.x + out[0] * (WALL_T + 0.33), y == null ? 0.07 : y, c.z + out[1] * (WALL_T + 0.33));
+  }
+
+  /* ======================================================================
+     LANE PICKING — a wide gate with several lanes previews the item at the
+     gate mouth; slide along the gate and release, or tap the lane again
+     ====================================================================== */
+  let lane = null, laneVis = null, laneHintShown = false;
+  const laneDotGeo = new THREE.CircleGeometry(0.11, 22);
+  const laneCross = (gate, item) => E.sideAxis(gate.side) === 'x' ? item.h : item.w;
+  function nearestLane(item, gate, opts, along) {
+    const cross = laneCross(gate, item);
+    let k = 0, bd = Infinity;
+    opts.forEach((o, i) => { const d = Math.abs(o.offset + cross / 2 - along); if (d < bd) { bd = d; k = i; } });
+    return k;
+  }
+  function showLane() {
+    hideLane();
+    const { item, gi, opts } = lane, gate = G.st.gates[gi], cross = laneCross(gate, item);
+    const grp = new THREE.Group(); root.add(grp);
+    const ghostG = holoOf(itemBlock(item)); grp.add(ghostG);
+    const mark = new THREE.Mesh(planeGeo(item.w - 0.06, item.h - 0.06), new THREE.MeshBasicMaterial({ map: markTex(item.w, item.h), transparent: true, depthWrite: false }));
+    mark.rotation.x = -Math.PI / 2; mark.renderOrder = 6; grp.add(mark);
+    const strip = new THREE.Mesh(planeGeo(1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false }));
+    strip.rotation.x = -Math.PI / 2; strip.renderOrder = 5; grp.add(strip);
+    const dots = opts.map(o => {
+      const d = new THREE.Mesh(laneDotGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false }));
+      d.rotation.x = -Math.PI / 2; d.position.copy(mouthPoint(gate, o.offset, cross)); d.renderOrder = 8; grp.add(d);
+      return d;
+    });
+    laneVis = { grp, ghostG, mark, strip, dots };
+    updateLane();
+  }
+  function updateLane() {
+    if (!lane || !laneVis) return;
+    const { item, opts, sel } = lane, o = opts[sel];
+    const mouth = blockCenter(item, o.x, o.y), land = blockCenter(item, o.ex, o.ey);
+    laneVis.ghostG.position.set(mouth.x, 0.01, mouth.z);
+    const travels = o.x !== o.ex || o.y !== o.ey;
+    laneVis.mark.visible = laneVis.strip.visible = travels;
+    if (travels) {
+      laneVis.mark.position.set(land.x, 0.022, land.z);
+      const x0 = Math.min(o.x, o.ex), y0 = Math.min(o.y, o.ey), x1 = Math.max(o.x, o.ex) + item.w, y1 = Math.max(o.y, o.ey) + item.h;
+      const c = localOf((x0 + x1) / 2, (y0 + y1) / 2);
+      laneVis.strip.position.set(c.x, 0.014, c.z);
+      laneVis.strip.scale.set(x1 - x0 - 0.16, y1 - y0 - 0.16, 1);
+    }
+    laneVis.dots.forEach((d, i) => {
+      const on = i === sel;
+      d.scale.setScalar(on ? 1.5 : 0.9);
+      d.material.color.set(on ? '#18213D' : '#FFFFFF');
+      d.material.opacity = on ? 0.95 : 0.75;
+    });
+  }
+  function hideLane() {
+    if (!laneVis) return;
+    root.remove(laneVis.grp);
+    laneVis.dots.forEach(d => d.material.dispose());
+    laneVis.mark.material.dispose(); laneVis.strip.material.dispose();
+    laneVis = null;
+    setHoloAlpha(1);
+  }
+  function cancelLane() { lane = null; hideLane(); }
+  function gateDown(e, gh) {
+    const item = G.queue[0], gate = G.st.gates[gh.gi], opts = E.entryOptions(G.st, item, gate);
+    if (!opts.length) { cancelLane(); rejectGate(gh.gi, item); return; }
+    if (opts.length === 1) { cancelLane(); doEnter(item, gh.gi, opts[0]); return; }
+    const again = !!(lane && lane.pending && lane.gi === gh.gi && lane.item === item);
+    const prev = again ? lane.sel : null;
+    lane = { gi: gh.gi, item, opts, sel: nearestLane(item, gate, opts, gh.along), prev, pid: e.pointerId, t0: performance.now(), sx: e.clientX, sy: e.clientY, moved: false, pending: false, holding: true };
+    if (again && laneVis) updateLane(); else showLane();
+    hideGhost(); sfx.pick(); haptic(5);
+    const v = gateViews[gh.gi]; if (v) v.flash = 1;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  }
+  function laneMove(e) {
+    const gp = pointerGrid(e); if (!gp) return;
+    const gate = G.st.gates[lane.gi], along = E.sideAxis(gate.side) === 'x' ? gp.gy : gp.gx;
+    if (Math.hypot(e.clientX - lane.sx, e.clientY - lane.sy) > 10) lane.moved = true;
+    const k = nearestLane(lane.item, gate, lane.opts, along);
+    if (k !== lane.sel) { lane.sel = k; updateLane(); sfx.click(); haptic(4); }
+  }
+  function laneUp(e, cancelled) {
+    try { canvas.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    lane.holding = false;
+    if (cancelled) { lane.pending = true; return; }
+    const quick = !lane.moved && performance.now() - lane.t0 < 320;
+    if (!quick || (lane.prev !== null && lane.prev === lane.sel)) { confirmLane(); return; }
+    lane.pending = true;
+    if (!laneHintShown) { laneHintShown = true; toast('Bu kapıda birden fazla şerit var: parmağını kapı boyunca kaydırıp bırak ya da aynı şeride tekrar dokun.', 3800); }
+  }
+  function confirmLane() {
+    const { item, gi, opts, sel } = lane, o = opts[sel];
+    cancelLane();
+    if (G.queue[0] !== item || G.busy || G.won) return;
+    doEnter(item, gi, o);
+  }
+
+  /* ======================================================================
+     GHOST HAND — short looping demos the first time a mechanic opens
+     ====================================================================== */
+  const TUT_AT = { 1: 'gate', 4: 'slide', 21: 'axis', 36: 'towel', 61: 'lid' };
+  const tutMem = {};
+  const tut = { kind: null, tl: null, holo: null, p: new THREE.Vector3(), press: 0, alpha: 0, fade: 0, trail: null, trailAlpha: 0, timer: 0, quietUntil: 0, hiddenId: null };
+  function showReal(id, v) { const m = meshes.get(id); if (m) m.group.visible = v; tut.hiddenId = v ? null : id; }
+  const tutEl = { root: $('#tut'), hand: $('#tutHand'), ripple: $('#tutRipple'), no: $('#tutNo'), path: $('#tutPath') };
+  function tutDone(k) { if (tutMem[k]) return true; try { return localStorage.getItem('pj-tut-' + k) === '1'; } catch (e) { return false; } }
+  function markTut(k) {
+    tutMem[k] = true;
+    try { localStorage.setItem('pj-tut-' + k, '1'); } catch (e) { /* ignore */ }
+    if (tut.kind === k) stopTut(false);
+  }
+  function resetTuts() {
+    tut.quietUntil = 0;
+    for (const k of Object.values(TUT_AT)) { delete tutMem[k]; try { localStorage.removeItem('pj-tut-' + k); } catch (e) { /* ignore */ } }
+  }
+  /* after the player interrupts a demo, give them a quiet spell before it returns */
+  function scheduleTut(ms) { clearTimeout(tut.timer); tut.timer = setTimeout(tryTut, Math.max(ms, tut.quietUntil - performance.now())); }
+  function tutBlocked() {
+    return G.won || G.busy > 0 || !!drag || !!qdrag || !!lane || G.mode !== 'idle' || !el.helpOv.hidden || !el.winOv.hidden ||
+      !el.failOv.hidden || !el.shakePick.hidden || !el.queueOv.hidden;
+  }
+  function tryTut() {
+    if (tut.kind) return;
+    const kind = TUT_AT[G.idx + 1];
+    if (!kind || tutDone(kind)) return;
+    if (tutBlocked()) { scheduleTut(900); return; }
+    const plan = planTut(kind);
+    if (plan) playTut(kind, plan);
+  }
+  function stopTut(interrupted) {
+    clearTimeout(tut.timer);
+    const was = tut.kind;
+    if (tut.tl) { tut.tl.kill(); tut.tl = null; }
+    if (tut.holo) { root.remove(tut.holo); tut.holo = null; }
+    if (tut.hiddenId != null) showReal(tut.hiddenId, true);
+    tut.kind = null; tut.trail = null; tut.alpha = 0; tut.trailAlpha = 0; tut.press = 0;
+    tutEl.root.hidden = true; tutEl.no.classList.remove('on');
+    if (!laneVis) setHoloAlpha(1);
+    if (interrupted && was && !tutDone(was)) { tut.quietUntil = performance.now() + 6000; scheduleTut(6000); }
+  }
+  function slideTarget(b, axes) {
+    const g = E.occ(G.st, b.id);
+    let best = null;
+    for (const ax of axes) {
+      if (!E.canAxis(b, ax)) continue;
+      const r = E.slideRange(G.st, b, ax, g), cur = ax === 'x' ? b.x : b.y;
+      for (const t of [r.min, r.max]) { const d = Math.abs(t - cur); if (d && (!best || d > best.d)) best = { ax, t, d }; }
+    }
+    return best && { axis: best.ax, x: best.ax === 'x' ? best.t : b.x, y: best.ax === 'y' ? best.t : b.y, d: best.d };
+  }
+  function gatePlan(item) {
+    if (!item || item.type !== 'block') return null;
+    let best = null;
+    G.st.gates.forEach((gate, gi) => {
+      const opts = E.entryOptions(G.st, item, gate);
+      if (opts.length && (!best || opts.length > best.opts.length)) best = { gi, opts };
+    });
+    return best && { type: 'gate', item, gi: best.gi, opts: best.opts };
+  }
+  function planTut(kind) {
+    const head = G.queue[0], bl = G.st.blocks;
+    if (kind === 'gate') return gatePlan(head);
+    if (kind === 'slide') {
+      const c = bl.filter(b => !b.fixed && !b.capped).map(b => ({ b, to: slideTarget(b, ['x', 'y']) })).filter(o => o.to);
+      c.sort((a, o) => (itemOf(o.b) === 'console') - (itemOf(a.b) === 'console') || o.to.d - a.to.d);
+      return c.length ? { type: 'slide', b: c[0].b, to: c[0].to } : null;
+    }
+    if (kind === 'axis') {
+      for (const b of bl) {
+        if ((b.axis !== 'h' && b.axis !== 'v') || b.capped) continue;
+        const to = slideTarget(b, [b.axis === 'h' ? 'x' : 'y']);
+        if (to) return { type: 'axis', b, to };
+      }
+      return head && head.type === 'block' && head.axis !== 'free' ? gatePlan(head) : null;
+    }
+    if (kind === 'towel') {
+      for (const b of bl) {
+        if (!b.soft || b.compressed) continue;
+        const ax = b.softAxis, g = E.occ(G.st, b.id);
+        for (const dir of [1, -1]) if (E.compressInfo(G.st, b, dir, g)) return { type: 'towel', b, dir, slide: null };
+        const r = E.slideRange(G.st, b, ax, g), cur = ax === 'x' ? b.x : b.y;
+        for (const dir of [1, -1]) {
+          const t = dir > 0 ? r.max : r.min;
+          if (t === cur) continue;
+          const probe = Object.assign({}, b, ax === 'x' ? { x: t } : { y: t });
+          if (E.compressInfo(G.st, probe, dir, g)) return { type: 'towel', b, dir, slide: { x: probe.x, y: probe.y } };
+        }
+      }
+      return null;
+    }
+    if (kind === 'lid') {
+      if (!head || head.type !== 'cap') return null;
+      const b = E.blockById(G.st, head.baseId);
+      return b && E.isSnug(G.st, b) ? { type: 'lid', b } : null;
+    }
+    return null;
+  }
+  function topOf(b, x, y, extra) { const c = blockCenter(b, x, y); c.y = heightOf(b) + (extra == null ? 0.06 : extra); return c; }
+  function tutRipple() { tutEl.ripple.classList.remove('go'); void tutEl.ripple.offsetWidth; tutEl.ripple.classList.add('go'); }
+  function playTut(kind, plan) {
+    stopTut(false);
+    tut.kind = kind;
+    tutEl.root.hidden = false;
+    const tl = gsap.timeline({ repeat: -1, repeatDelay: 0.9 });
+    tut.tl = tl;
+    const P = tut.p;
+    const moveHand = (pt, d, ease) => tl.to(P, { x: pt.x, y: pt.y, z: pt.z, duration: d, ease: ease || 'power2.inOut' });
+    const press = () => { tl.to(tut, { press: 1, duration: 0.14, ease: 'power2.out' }); tl.call(tutRipple, null, '<'); };
+    const release = () => tl.to(tut, { press: 0, duration: 0.16 });
+    const trail = (a, b) => { tl.call(() => { tut.trail = [a, b]; }); tl.to(tut, { trailAlpha: 1, duration: 0.2 }); };
+    const begin = (start, holo, holoPos) => {
+      tl.set(P, { x: start.x, y: start.y, z: start.z }, 0);
+      tl.set(tut, { alpha: 0, press: 0, fade: 0, trailAlpha: 0 }, 0);
+      tl.call(() => { tut.trail = null; tutEl.no.classList.remove('on'); }, null, 0);
+      if (holo) { tl.set(holo.position, { x: holoPos.x, y: holoPos.y, z: holoPos.z }, 0); tl.set(holo.scale, { x: 1, y: 1, z: 1 }, 0); tl.set(holo.rotation, { y: 0 }, 0); }
+    };
+    const away = p => new THREE.Vector3(p.x + 0.7, p.y + 1.1, p.z + 0.9);
+    const end = () => { tl.to(tut, { alpha: 0, fade: 0, trailAlpha: 0, duration: 0.3 }, '+=0.5'); };
+
+    if (plan.type === 'gate') {
+      const { item, gi, opts } = plan, gate = G.st.gates[gi], cross = laneCross(gate, item);
+      const o0 = opts[0], o1 = opts[opts.length - 1];
+      const m0 = mouthPoint(gate, o0.offset, cross, 0.22), m1 = mouthPoint(gate, o1.offset, cross, 0.22);
+      const h0 = blockCenter(item, o0.x, o0.y), h1 = blockCenter(item, o1.x, o1.y), land = blockCenter(item, o1.ex, o1.ey);
+      const holo = holoOf(itemBlock(item)); root.add(holo); tut.holo = holo;
+      const out = OUT[gate.side];
+      begin(new THREE.Vector3(m0.x + out[0] * 0.9 + 0.3, 1.1, m0.z + out[1] * 0.9 + 0.6), holo, h0);
+      moveHand(m0, 0.6); tl.to(tut, { alpha: 1, duration: 0.3 }, '<');
+      press(); tl.to(tut, { fade: 1, duration: 0.2 }, '<');
+      if (opts.length > 1) {
+        trail(m0, m1);
+        moveHand(m1, 0.85); tl.to(holo.position, { x: h1.x, z: h1.z, duration: 0.85, ease: 'power2.inOut' }, '<');
+        tl.to({}, { duration: 0.15 });
+      }
+      release();
+      tl.to(tut, { trailAlpha: 0, duration: 0.2 }, '<');
+      tl.to(holo.position, { x: land.x, z: land.z, duration: 0.2 + 0.05 * h1.distanceTo(land), ease: 'power2.in' }, '<');
+      tl.to(holo.scale, { x: 1.08, y: 0.9, z: 1.08, duration: 0.08, yoyo: true, repeat: 1 });
+      end();
+    } else if (plan.type === 'slide' || plan.type === 'axis') {
+      const { b, to } = plan;
+      const holo = holoOf(Object.assign({}, b)); root.add(holo); tut.holo = holo;
+      const c0 = blockCenter(b), c1 = blockCenter(b, to.x, to.y), p0 = topOf(b), p1 = topOf(b, to.x, to.y);
+      begin(away(p0), holo, new THREE.Vector3(c0.x, 0.02, c0.z));
+      moveHand(p0, 0.55); tl.to(tut, { alpha: 1, duration: 0.3 }, '<');
+      press(); tl.to(tut, { fade: 1, duration: 0.2 }, '<');
+      if (plan.type === 'axis') {
+        const wrong = p0.clone(); if (to.axis === 'x') wrong.z += 0.6; else wrong.x += 0.6;
+        moveHand(wrong, 0.32);
+        tl.call(() => tutEl.no.classList.add('on'));
+        tl.to(holo.rotation, { y: 0.09, duration: 0.06, yoyo: true, repeat: 3 }, '<');
+        moveHand(p0, 0.3, 'power2.out');
+        tl.call(() => tutEl.no.classList.remove('on'));
+      }
+      trail(p0, p1);
+      const d = 0.4 + c0.distanceTo(c1) * 0.12;
+      moveHand(p1, d); tl.to(holo.position, { x: c1.x, z: c1.z, duration: d, ease: 'power2.inOut' }, '<');
+      release();
+      end();
+    } else if (plan.type === 'towel') {
+      const { b, dir, slide } = plan, ax = b.softAxis, k = ax === 'x' ? 'x' : 'z';
+      const s = slide || { x: b.x, y: b.y };
+      const holo = holoOf(Object.assign({}, b)); root.add(holo); tut.holo = holo;
+      const c0 = blockCenter(b), c1 = blockCenter(b, s.x, s.y), p0 = topOf(b), p1 = topOf(b, s.x, s.y);
+      const push = p1.clone(); push[k] += dir * 0.65;
+      const squeezed = c1.clone(); squeezed[k] += dir * 0.5;
+      begin(away(p0), holo, new THREE.Vector3(c0.x, 0.02, c0.z));
+      tl.call(() => showReal(b.id, true), null, 0);
+      moveHand(p0, 0.55); tl.to(tut, { alpha: 1, duration: 0.3 }, '<');
+      press(); tl.to(tut, { fade: 1.5, duration: 0.2 }, '<'); tl.call(() => showReal(b.id, false));
+      trail(p0, push);
+      if (slide) {
+        const d = 0.35 + c0.distanceTo(c1) * 0.1;
+        moveHand(p1, d); tl.to(holo.position, { x: c1.x, z: c1.z, duration: d, ease: 'power2.inOut' }, '<');
+      }
+      moveHand(push, 0.5, 'power2.in');
+      tl.to(holo.position, { [k]: squeezed[k], duration: 0.5, ease: 'power2.in' }, '<');
+      tl.to(holo.scale, { [k]: 2 / 3, duration: 0.5, ease: 'power2.in' }, '<');
+      tl.call(() => puff(squeezed.x - (k === 'x' ? dir : 0) * 1.1, squeezed.z - (k === 'z' ? dir : 0) * 1.1, 4, 0.5));
+      tl.to(holo.scale, { y: 0.86, duration: 0.1, yoyo: true, repeat: 1 });
+      release();
+      tl.to({}, { duration: 0.35 });
+      tl.call(() => showReal(b.id, true));
+      tl.to(tut, { alpha: 0, fade: 0, trailAlpha: 0, duration: 0.35 });
+    } else if (plan.type === 'lid') {
+      const { b } = plan;
+      const holo = holoify(buildLidGroup(b.w - GAP, b.h - GAP)); root.add(holo); tut.holo = holo;
+      const c = blockCenter(b), p = topOf(b, null, null, 0.2);
+      p.x += 0.42; p.z += 0.42;
+      /* same path as the real lid: slides in from the nearest suitcase edge, then drops */
+      const dl = c.x + G.st.W / 2, dr = G.st.W / 2 - c.x, dt = c.z + G.st.H / 2, db = G.st.H / 2 - c.z, mn = Math.min(dl, dr, dt, db);
+      const ox = mn === dl ? -1 : mn === dr ? 1 : 0, oz = ox ? 0 : (mn === dt ? -1 : 1), far = mn + 1.4;
+      const hi = new THREE.Vector3(c.x + ox * far, JEWEL_H + 0.3, c.z + oz * far), over = new THREE.Vector3(c.x, JEWEL_H + 0.3, c.z);
+      begin(away(p), holo, hi);
+      moveHand(p, 0.55); tl.to(tut, { alpha: 1, duration: 0.3 }, '<');
+      press(); tl.to(tut, { fade: 1.7, duration: 0.25 }, '<');
+      trail(hi.clone(), over);
+      release();
+      tl.to(holo.position, { x: over.x, z: over.z, duration: 0.55, ease: 'power2.out' }, '<');
+      tl.to(holo.position, { y: JEWEL_H - 0.004, duration: 0.18, ease: 'power3.in' });
+      tl.to(tut, { trailAlpha: 0, duration: 0.2 }, '-=0.2');
+      tl.to({}, { duration: 0.4 });
+      end();
+    }
+  }
+
   /* ======================================================================
      INPUT — the conveyor tray (tap to select, drag onto a gate)
      ====================================================================== */
   let qdrag = null;
   function onTrayDown(e) {
     sfx.unlock();
+    if (tut.kind) stopTut(true);
+    cancelLane();
     if (G.busy || G.won || drag) return;
     if (!G.queue[0]) return;
     e.preventDefault();
@@ -1499,10 +1881,11 @@
   /* ======================================================================
      BOOSTER + MENU BUTTONS
      ====================================================================== */
-  el.bUndo.addEventListener('click', () => { sfx.unlock(); doUndo(); });
+  el.bUndo.addEventListener('click', () => { sfx.unlock(); stopTut(true); cancelLane(); doUndo(); });
   el.bVac.addEventListener('click', () => {
     sfx.unlock();
     if (G.busy || G.won) return;
+    stopTut(true); cancelLane();
     if (G.mode === 'vacuum') { G.mode = 'idle'; updateHUD(); toast('Vakum iptal edildi.'); return; }
     if (G.boost.vac <= 0) { toast('Vakum poşetin kalmadı.'); sfx.deny(); return; }
     if (!G.st.blocks.some(b => !b.fixed && !b.sock && !b.base && !b.capped && b.w * b.h > 1)) { toast('İçeride vakumlanacak blok yok.'); sfx.deny(); return; }
@@ -1513,6 +1896,7 @@
     sfx.unlock();
     if (G.busy || G.won) return;
     if (G.boost.shake <= 0) { toast('Silkeleme hakkın kalmadı.'); sfx.deny(); return; }
+    stopTut(true); cancelLane();
     G.mode = 'idle'; closeFail(); updateHUD();
     el.shakePick.hidden = false; sfx.pop();
     const first = el.shakePick.querySelector('button[data-dir]'); if (first) first.focus({ preventScroll: true });
@@ -1525,8 +1909,16 @@
   });
   $('#btnRestart').addEventListener('click', () => { sfx.unlock(); if (G.won && G.busy) return; loadLevel(G.idx); toast('Bavul boşaltıldı, baştan başla.'); });
   el.btnSound.addEventListener('click', () => { sfx.unlock(); sfx.setMuted(!sfx.muted); setSoundIcon(); });
-  $('#btnHelp').addEventListener('click', () => { el.helpOv.hidden = false; $('#btnStart').focus({ preventScroll: true }); });
-  $('#btnStart').addEventListener('click', () => { sfx.unlock(); el.helpOv.hidden = true; try { localStorage.setItem('pj-seen-help', '1'); } catch (e) { /* ignore */ } toast(G.level.cfg.intro || 'İyi paketlemeler!', 4200); });
+  $('#btnHelp').addEventListener('click', () => { stopTut(true); cancelLane(); el.helpOv.hidden = false; $('#btnStart').focus({ preventScroll: true }); });
+  $('#btnStart').addEventListener('click', () => { sfx.unlock(); el.helpOv.hidden = true; try { localStorage.setItem('pj-seen-help', '1'); } catch (e) { /* ignore */ } toast(G.level.cfg.intro || 'İyi paketlemeler!', 4200); scheduleTut(700); });
+  $('#btnTips').addEventListener('click', () => {
+    resetTuts(); el.helpOv.hidden = true; scheduleTut(500);
+    toast(TUT_AT[G.idx + 1] ? 'El ipuçları yeniden açıldı.' : 'El ipuçları yeniden açıldı: 1, 4, 21, 36 ve 61. bölümlerde görünür.', 3200);
+  });
+  el.btnQueue.addEventListener('click', () => { sfx.unlock(); openQueueSheet(); });
+  $('#queueClose').addEventListener('click', closeQueueSheet);
+  el.queueOv.addEventListener('click', e => { if (e.target === el.queueOv) closeQueueSheet(); });
+  el.belt.addEventListener('scroll', updateBeltFade, { passive: true });
   $('#stamp').addEventListener('click', () => {
     const lv = G.level, n = lv.queue.filter(q => q.type === 'block').length;
     const gaps = lv.gapCount ? `${lv.gapCount} kare planlı boşluk bırakılarak` : 'tek boşluk bırakmadan';
@@ -1538,7 +1930,7 @@
   $('#fRestart').addEventListener('click', () => { closeFail(); loadLevel(G.idx); });
   $('#fClose').addEventListener('click', () => { closeFail(); toast('Vakum ya da Silkele ile yer açmayı dene.'); });
   window.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { el.shakePick.hidden = true; if (G.mode === 'vacuum') { G.mode = 'idle'; updateHUD(); } }
+    if (e.key === 'Escape') { el.shakePick.hidden = true; closeQueueSheet(); cancelLane(); if (G.mode === 'vacuum') { G.mode = 'idle'; updateHUD(); } }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doUndo(); }
   });
 
@@ -1600,7 +1992,7 @@
   }
   function winSequence() {
     if (G.won) return;
-    G.won = true; G.mode = 'idle'; G.selected = false; hideGhost(); closeFail(); el.shakePick.hidden = true;
+    G.won = true; G.mode = 'idle'; G.selected = false; hideGhost(); closeFail(); el.shakePick.hidden = true; stopTut(false); cancelLane();
     updateHUD();
     lock();
     const lid = buildLid(), zip = buildZipper(lid.OW, lid.OH);
@@ -1679,6 +2071,7 @@
      ====================================================================== */
   let introTimer = 0;
   function loadLevel(i) {
+    stopTut(false); cancelLane(); closeQueueSheet();
     gsap.globalTimeline.clear();
     cancelAnimationFrame(confRaf); fctx.clearRect(0, 0, fx.width, fx.height);
     const lv = E.buildLevel(i);
@@ -1715,6 +2108,7 @@
       if (!k) tl.to({}, { duration: 0.1 });
     }
     try { localStorage.setItem('pj-level', String(i)); } catch (e) { /* ignore */ }
+    scheduleTut(1800);
   }
 
   /* ======================================================================
@@ -1737,12 +2131,24 @@
     }
     if (halo && halo.visible) halo.material.opacity = 0.4 + 0.28 * Math.sin(t * 5);
     if (emptyOverlay && emptyOverlay.visible) emptyOverlay.material.opacity = 0.55 + 0.3 * Math.sin(t * 4);
+    if (tut.kind) {
+      const ar = app.getBoundingClientRect(), cr = canvas.getBoundingClientRect(), s = toScreen(tut.p, ar, cr);
+      tutEl.hand.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) scale(${(1 - 0.14 * tut.press).toFixed(3)})`;
+      tutEl.hand.style.opacity = tut.alpha.toFixed(3);
+      if (tut.trail && tut.trailAlpha > 0.01) {
+        const a = toScreen(tut.trail[0], ar, cr), b = toScreen(tut.trail[1], ar, cr), len = Math.hypot(b.x - a.x, b.y - a.y) || 1, k = Math.max(0, (len - 16) / len);
+        tutEl.path.setAttribute('d', `M${a.x.toFixed(1)} ${a.y.toFixed(1)}L${(a.x + (b.x - a.x) * k).toFixed(1)} ${(a.y + (b.y - a.y) * k).toFixed(1)}`);
+        tutEl.path.style.opacity = tut.trailAlpha.toFixed(3);
+      } else tutEl.path.style.opacity = '0';
+      if (!laneVis) setHoloAlpha(tut.fade);
+    } else if (laneVis) setHoloAlpha(0.72 + 0.28 * Math.sin(t * 6));
     renderer.render(scene, camera);
   }
 
   /* ---------- test hook: plays the generator's reference solution ---------- */
   window.__pj.pointerGrid = (x, y) => pointerGrid({ clientX: x, clientY: y });
   window.__pj.refresh = () => { syncAll(false); renderQueue(); afterAction(); };
+  window.__pj.tut = tut; window.__pj.lane = () => lane; window.__pj.tryTut = tryTut; window.__pj.planTut = planTut; window.__pj.resetTuts = resetTuts; window.__pj.screenOfPoint = p => toScreen(p, app.getBoundingClientRect(), canvas.getBoundingClientRect());
   window.__pj.autoplay = function (speed) {
     speed = speed || 1;
     const sol = G.level.solution.slice();

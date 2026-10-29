@@ -96,13 +96,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
 /* ---------- bottom band ---------- */
 #hudBottom { bottom: 0; padding-block: 0 14px; }
-#hudBottom .hud-inner { display: grid; gap: 12px; }
-.belt-wrap { background: var(--belt); border-radius: 20px; padding: 9px 10px 11px;
+#hudBottom .hud-inner { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.belt-wrap { min-width: 0; background: var(--belt); border-radius: 20px; padding: 9px 10px 11px;
   box-shadow: inset 0 -5px 0 rgba(0, 0, 0, .35), 0 12px 26px rgba(24, 33, 61, .28); }
-.belt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 4px 7px; color: #C9D2E3;
+.belt-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 0 7px; color: #C9D2E3;
   font: 500 10.5px/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; }
 .belt-head #hint { color: #FFD9A8; letter-spacing: .04em; text-transform: none; font: 600 12.5px/1.2 var(--f-ui); text-align: right; min-width: 0; }
-.belt { position: relative; display: flex; align-items: flex-end; gap: 10px; min-height: 104px; padding: 8px; border-radius: 12px; overflow: hidden;
+.belt { position: relative; display: flex; align-items: flex-end; gap: 10px; min-height: 104px; padding: 8px; border-radius: 12px;
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; touch-action: pan-x;
   background: repeating-linear-gradient(90deg, var(--belt-2) 0 26px, #262B39 26px 29px); background-size: 29px 100%; }
 .belt.roll { animation: roll .35s ease-out; }
 @keyframes roll { from { background-position: 29px 0; } to { background-position: 0 0; } }
@@ -118,17 +119,29 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 @keyframes slideIn { from { transform: translateX(var(--from, 90px)); } to { transform: none; } }
 .tray-lbl { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font: 500 10px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; white-space: nowrap; }
 .tray-lbl.long { font-size: 8.5px; letter-spacing: 0; }
-.more { flex: 0 0 auto; align-self: center; min-width: 46px; height: 46px; border-radius: 23px; display: grid; place-items: center; color: #DCE3F0;
-  border: 2px dashed rgba(220, 227, 240, .45); font: 600 15px/1 var(--f-ui); }
+.belt::-webkit-scrollbar { display: none; }
+.belt.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent); }
+.belt.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px); mask-image: linear-gradient(90deg, transparent, #000 36px); }
+.belt.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 44px), transparent); }
+.tray { scroll-snap-align: start; }
+.tray.far { width: 56px; height: 60px; padding: 0; border-radius: 11px; box-shadow: inset 0 3px 5px rgba(0, 0, 0, .18), inset 0 0 0 2px rgba(255, 255, 255, .55), 0 3px 0 var(--tray-edge); }
+.tray-num { position: absolute; top: -1px; left: 50%; transform: translate(-50%, -55%); background: #3A4256; color: #DCE3F0; font: 500 9px/1 var(--f-mono);
+  padding: 3px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.q-all { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; padding: 5px 8px; cursor: pointer; flex: 0 0 auto;
+  background: rgba(255, 255, 255, .08); color: #C9D2E3; font: 500 10.5px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; }
+.q-all b { color: #fff; font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.q-all svg { width: 11px; height: 11px; }
+.q-all:hover { background: rgba(255, 255, 255, .14); }
+.q-all:disabled { opacity: .5; cursor: default; }
 .empty-belt { color: #9AA6BD; font: 500 12px/1.4 var(--f-mono); align-self: center; padding: 0 8px; }
 
 .ico { position: relative; display: grid; place-items: center; width: var(--box); height: var(--box); }
 .ico img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 3px 2px rgba(24, 33, 61, .28)); }
 .ico.it-joker img { filter: sepia(1) saturate(2.6) hue-rotate(-14deg) brightness(1.06) drop-shadow(0 3px 2px rgba(24, 33, 61, .28)); }
 .ico .joker-star { position: absolute; left: 6%; top: 4%; color: #F2B93B; font-size: calc(var(--box) * .32); line-height: 1; text-shadow: 0 1px 0 #fff; }
-.tray .axis-badge { position: absolute; left: 5px; top: 5px; min-width: 22px; height: 20px; padding: 0 4px; border-radius: 10px; background: var(--ink); color: #fff;
+.tray .axis-badge, .q-item .axis-badge { position: absolute; left: 5px; top: 5px; min-width: 22px; height: 20px; padding: 0 4px; border-radius: 10px; background: var(--ink); color: #fff;
   font: 700 14px/20px var(--f-ui); text-align: center; box-shadow: 0 2px 0 rgba(0, 0, 0, .2); }
-.tray .fp { position: absolute; right: 6px; top: 6px; overflow: visible; filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .9)); }
+.tray .fp, .q-item .fp { position: absolute; right: 6px; top: 6px; overflow: visible; filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .9)); }
 .fp rect { fill: var(--ink); }
 .fp rect.soft { fill: rgba(255, 255, 255, .8); stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 2 1.6; }
 .fp rect.lid { fill: rgba(221, 243, 255, .9); stroke: #C9971F; stroke-width: 1.4; }
@@ -188,6 +201,38 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .help li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; font-size: 14.5px; line-height: 1.4; color: var(--ink-2); counter-increment: s; }
 .help li::before { content: counter(s); width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--tag); color: var(--tag-ink); font: 400 14px/1 var(--f-display); }
 .help li b { color: var(--ink); }
+.help .btn.ghost { justify-self: center; }
+
+/* ---------- full queue sheet ---------- */
+.queue-card { width: min(100%, 460px); }
+.q-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; text-align: center; }
+.q-item { position: relative; display: grid; justify-items: center; gap: 4px; padding: 20px 4px 9px; border-radius: 14px; background: #F1F4F8; }
+.q-item.now { background: #FFEDE5; box-shadow: inset 0 0 0 2px var(--accent); }
+.q-n { position: absolute; top: 6px; left: 8px; font: 500 10px/1 var(--f-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.q-item.now .q-n { color: var(--accent-deep); letter-spacing: .08em; }
+.q-name { font-weight: 600; font-size: 12.5px; line-height: 1.15; color: var(--ink); }
+.q-size { font: 500 10px/1 var(--f-mono); color: var(--ink-2); }
+.q-item .axis-badge { top: 26px; left: 6px; }
+
+/* ---------- ghost hand ---------- */
+.tut { position: absolute; inset: 0; z-index: 12; pointer-events: none; overflow: hidden; }
+.tut-trail { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#tutPath { fill: none; stroke: #FFE08A; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1 12; opacity: 0;
+  filter: drop-shadow(0 0 4px rgba(255, 210, 90, .95)); animation: march .6s linear infinite; }
+@keyframes march { to { stroke-dashoffset: -13; } }
+.tut-hand { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
+.tut-hand-svg { position: absolute; width: 58px; height: 58px; left: -20px; top: -3px; overflow: visible; filter: drop-shadow(0 6px 6px rgba(24, 33, 61, .35)); opacity: .94; }
+.tut-hand-svg .o { fill: var(--ink); stroke: var(--ink); stroke-width: 5; stroke-linejoin: round; }
+.tut-hand-svg .f { fill: #FFFFFF; }
+.tut-hand-svg .sleeve { fill: var(--accent); }
+.tut-ripple { position: absolute; left: -20px; top: -20px; width: 40px; height: 40px; border-radius: 50%; border: 3px solid #FFE08A; opacity: 0;
+  box-shadow: 0 0 12px rgba(255, 210, 90, .9); }
+.tut-ripple.go { animation: tutRipple .6s ease-out; }
+@keyframes tutRipple { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.7); opacity: 0; } }
+.tut-no { position: absolute; left: 18px; top: -34px; width: 28px; height: 28px; border-radius: 50%; background: #E5484D; color: #fff;
+  font: 700 16px/28px var(--f-ui); text-align: center; opacity: 0; transform: scale(.4); transition: opacity .15s, transform .2s cubic-bezier(.2, .9, .3, 1.4);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .2); }
+.tut-no.on { opacity: 1; transform: scale(1); }
 
 @media (max-height: 700px) {
   .tray { height: 64px; width: 70px; } .tray.head { height: 78px; width: 92px; } .belt { min-height: 90px; }
@@ -195,7 +240,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   .stamp { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fill-bar { animation: none; } .booster.armed .orb { animation: none; } .card { animation: none; } .tray.enter, .belt.roll { animation: none; }
+  .fill-bar { animation: none; } .booster.armed .orb { animation: none; } .card { animation: none; } .tray.enter, .belt.roll { animation: none; } #tutPath { animation: none; }
 }
 </style>
 
@@ -236,7 +281,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   <footer id="hudBottom" class="hud">
     <div class="hud-inner">
       <div class="belt-wrap">
-        <div class="belt-head"><span>Kuyruk</span><span id="hint">Bir kapıya dokun</span></div>
+        <div class="belt-head"><button class="q-all" id="btnQueue" type="button" aria-label="Kuyruğun tamamını göster">Kuyruk <b id="qCount">0</b><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg></button><span id="hint">Bir kapıya dokun</span></div>
         <div class="belt" id="belt"></div>
       </div>
       <div class="boosters">
@@ -310,6 +355,30 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
         <li><span><b>Takı kutusu</b> hiç kıpırdamayacak şekilde yerine oturunca sırası gelen şeffaf kapağı üstüne tak.</span></li>
       </ol>
       <button class="btn primary" id="btnStart" type="button">Bavulu açalım</button>
+      <button class="btn ghost" id="btnTips" type="button">El ipuçlarını yeniden göster</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="queueOv" hidden>
+    <div class="card queue-card" role="dialog" aria-labelledby="queueTitle">
+      <h2 id="queueTitle">Kuyruk sırası</h2>
+      <p id="queueSub"></p>
+      <ol class="q-grid" id="queueGrid"></ol>
+      <button class="btn primary" id="queueClose" type="button">Tamam</button>
+    </div>
+  </div>
+
+  <div class="tut" id="tut" hidden aria-hidden="true">
+    <svg class="tut-trail"><defs><marker id="tutHead" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4.2" markerHeight="4.2" orient="auto"><path d="M0 0 10 5 0 10z" fill="#FFE08A"/></marker></defs><path id="tutPath" d="" marker-end="url(#tutHead)"/></svg>
+    <div class="tut-hand" id="tutHand">
+      <span class="tut-ripple" id="tutRipple"></span>
+      <svg class="tut-hand-svg" viewBox="0 0 64 64">
+        <defs><g id="tutShape"><rect x="16" y="3" width="12" height="34" rx="6"/><rect x="27" y="19" width="11" height="22" rx="5.5"/><rect x="37" y="22" width="10" height="20" rx="5"/><rect x="46" y="26" width="9" height="17" rx="4.5"/><rect x="16" y="31" width="39" height="27" rx="12"/><rect x="5" y="31" width="19" height="11" rx="5.5" transform="rotate(38 14 36)"/><rect x="21" y="54" width="30" height="12" rx="3"/></g></defs>
+        <use href="#tutShape" class="o"/><use href="#tutShape" class="f"/>
+        <rect class="sleeve" x="21" y="55" width="30" height="11" rx="2.5"/>
+        <path d="M27.5 34v6M37.5 37v5M46.5 39v4" stroke="#C3CCDC" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+      </svg>
+      <span class="tut-no" id="tutNo">✕</span>
     </div>
   </div>
 </div>

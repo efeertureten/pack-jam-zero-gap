@@ -19,6 +19,13 @@ Oynamak için `index.html` dosyasını tarayıcıda açman yeterli (Three.js r12
 
 Bavuldaki eşyalar bu tasarımlara göre Three.js'te modellenir; kuyruk tepsisinde ve yardım ekranında tasarımların kendisi (arka planı silinmiş haliyle) gösterilir. Tepsideki küçük kare ızgarası sıradaki eşyanın boyutunu ve yönünü, kesikli kare havlunun büzüşen hücresini gösterir.
 
+### Kontroller
+
+- **Kapıya dokun** ya da sıradaki tepsiyi kapıya sürükle. Kapı tek şeritliyse eşya hemen girer.
+- **Geniş kapılar:** Eşyanın girebileceği birden fazla şerit varsa dokunduğunda eşya girmez. Kapı ağzında hayaleti, gideceği yer ve şerit noktaları belirir. Parmağını kapı boyunca kaydırıp bırakınca ya da aynı şeride tekrar dokununca eşya girer. Başka bir şeride dokunmak seçimi oraya taşır, kapı dışına dokunmak iptal eder.
+- **Kuyruk:** Bant yatayda kaydırılabilir ve kuyruğun tamamını sırayla gösterir. Sol üstteki **Kuyruk N** düğmesi bütün sırayı eşya adı ve boyutuyla bir listede açar.
+- **El ipuçları:** 1, 4, 21, 36 ve 61. bölümlerde yeni bir mekanik açılınca bavulun üstünde yarı saydam bir el kısa bir gösterim yapar: kapıya dokunup şerit seçme (1), eşya kaydırma (4), oklu eşyanın yalnızca ok yönünde kayması (21), havlunun duvara itilip büzüşmesi (36) ve şeffaf kapağın takı kutusuna oturması (61). Oyuncu herhangi bir yere dokununca el kaybolur ve 6 saniye hareketsizlikten sonra geri gelir. Gösterilen hamle bir kez yapılınca bir daha çıkmaz. Yardım ekranındaki "El ipuçlarını yeniden göster" düğmesi hepsini sıfırlar.
+
 ### Booster'lar
 
 | Booster | Etki |
