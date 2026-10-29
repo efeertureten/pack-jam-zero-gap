@@ -122,7 +122,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .tray.head.dragging { opacity: .45; }
 .tray.enter { animation: slideIn .35s cubic-bezier(.2, .9, .3, 1.15); }
 @keyframes slideIn { from { transform: translateX(var(--from, 90px)); } to { transform: none; } }
-.tray-lbl { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font: 500 10px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; }
+.tray-lbl { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font: 500 10px/1 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; white-space: nowrap; }
+.tray-lbl.long { font-size: 8.5px; letter-spacing: 0; }
 .more { flex: 0 0 auto; align-self: center; min-width: 46px; height: 46px; border-radius: 23px; display: grid; place-items: center; color: #DCE3F0;
   border: 2px dashed rgba(220, 227, 240, .45); font: 600 15px/1 var(--f-ui); }
 .empty-belt { color: #9AA6BD; font: 500 12px/1.4 var(--f-mono); align-self: center; padding: 0 8px; }
@@ -2223,7 +2224,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
     if (!items.length) { el.belt.innerHTML = '<span class="empty-belt">Kuyruk boş</span>'; return; }
     el.belt.innerHTML = items.map((it, i) => {
       const head = i === 0;
-      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it, true) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 62 : 48)}<span class="tray-lbl">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
+      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it, true) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 62 : 48)}<span class="tray-lbl${itemLabel(it).length > 10 ? ' long' : ''}">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
     }).join('') + (rest > 0 ? `<span class="more" aria-label="${rest} eşya daha">+${rest}</span>` : '');
     if (shifted && !REDUCED) { el.belt.classList.remove('roll'); void el.belt.offsetWidth; el.belt.classList.add('roll'); }
     const ht = $('#headTray');

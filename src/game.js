@@ -905,7 +905,7 @@
     if (!items.length) { el.belt.innerHTML = '<span class="empty-belt">Kuyruk boş</span>'; return; }
     el.belt.innerHTML = items.map((it, i) => {
       const head = i === 0;
-      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it, true) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 62 : 48)}<span class="tray-lbl">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
+      return `<${head ? 'button type="button"' : 'div'} class="tray${head ? ' head' : ''}${head && G.selected ? ' selected' : ''}${shifted && !REDUCED ? ' enter' : ''}" ${head ? 'id="headTray" aria-label="Sıradaki eşya: ' + itemLabel(it, true) + '"' : ''} style="--from:${head ? 86 : 90}px">${miniHTML(it, head ? 62 : 48)}<span class="tray-lbl${itemLabel(it).length > 10 ? ' long' : ''}">${itemLabel(it)}</span></${head ? 'button' : 'div'}>`;
     }).join('') + (rest > 0 ? `<span class="more" aria-label="${rest} eşya daha">+${rest}</span>` : '');
     if (shifted && !REDUCED) { el.belt.classList.remove('roll'); void el.belt.offsetWidth; el.belt.classList.add('roll'); }
     const ht = $('#headTray');
