@@ -2039,24 +2039,31 @@ window.Native.ready(function () {
   }
   /* Scene art: 738×1024, the suitcase + four friends sit in x 160–640, y 90–690.
      Scale so that group fits the free area between the top bar and the play button, centred there. */
-  const ART = { w: 738, h: 1024, x0: 160, x1: 640, y0: 90, y1: 690 };
+  const ART = { w: 597, h: 799, x0: 32, x1: 588, y0: 50, y1: 769 };   // sahne resmi: bavul + dört karakter + platform
   function placeHomeArt(w, h, top, bot) {
     const img = $('#homeArt'); if (!img) return;
     const bg = $('#homeArtBg'); if (bg && !bg.style.backgroundImage) bg.style.backgroundImage = `url("${img.src}")`;
     const art = img.parentNode, cxA = (ART.x0 + ART.x1) / 2, cyA = (ART.y0 + ART.y1) / 2;
-    const cover = w / h < 0.8;                      // telefon / dikey ekran: resim tüm ekranı kaplar
-    art.classList.toggle('cover', cover);
+    const sw = ART.x1 - ART.x0, sh = ART.y1 - ART.y0, sc = Math.max(w / ART.w, h / ART.h);
+    /* cover: resim tüm ekranı kaplar, ama yalnızca grup kırpılmıyorsa. Değilse 'fit': grup sığar,
+       kalan alanı aynı resmin bulanık kopyası doldurur (kenarlar yumuşak geçişli). */
+    const cover = sw * sc <= w * 1.02 && sh * sc <= h * 0.98;
+    art.classList.toggle('cover', cover); art.classList.toggle('fit', !cover); art.classList.toggle('wide', !cover && w / h >= 0.8);
     let s, x, y;
+    const freeH = Math.max(160, h - top - bot);
     if (cover) {
-      s = Math.max(w / ART.w, h / ART.h);
-      const freeTop = top, freeH = Math.max(160, h - top - bot);
+      s = sc;
       x = Math.min(0, Math.max(w - ART.w * s, w / 2 - cxA * s));          // grubu ortala, kenar açığı bırakma
-      y = Math.min(0, Math.max(h - ART.h * s, freeTop + freeH / 2 - cyA * s));
+      y = Math.min(0, Math.max(h - ART.h * s, top + freeH / 2 - cyA * s));
+    } else if (w / h < 0.8) {
+      /* telefon: grup ekran genişliğini doldurur; sandık kartının yanına ve Oyna butonunun arkasına taşabilir */
+      s = Math.min(w * 1.02 / sw, h * 0.78 / sh);
+      x = w / 2 - cxA * s; y = top + freeH / 2 - cyA * s;
     } else {
-      /* geniş ekran: grup üst barın altından Oyna butonuna kadar olan alana sığar (sandık kartının arkasına taşabilir) */
+      /* geniş ekran: grup üst barın altından Oyna butonuna kadar olan alana sığar */
       const barB = Math.max(0, $('.home-bar').getBoundingClientRect().bottom - app.getBoundingClientRect().top);
       const areaTop = barB + 8, areaH = Math.max(160, h - areaTop - bot);
-      s = Math.min((w - 16) / (ART.x1 - ART.x0), areaH / (ART.y1 - ART.y0));
+      s = Math.min((w - 16) / sw, areaH / sh);
       x = w / 2 - cxA * s; y = areaTop + areaH / 2 - cyA * s;
     }
     img.style.width = ART.w * s + 'px'; img.style.height = ART.h * s + 'px';
